@@ -46,6 +46,7 @@ all agents can be directed to the shared [AGENTS.md](../../AGENTS.md).
 ## Local publication receipt
 
 - Staged tree and local links/package policy: passed, 64 tracked files.
+- Negative policy fixture: a tracked synthetic environment file was rejected.
 - Offline fixture suite: 92 passed, 0 failed, 0 skipped (36.24 seconds).
 - Gitleaks 8.30.1 staged scan: no leaks.
 - Semgrep 1.172.0: 79 JavaScript/GitHub Actions rules, 24 targets, no findings
@@ -61,6 +62,14 @@ all agents can be directed to the shared [AGENTS.md](../../AGENTS.md).
   instructions, scripts and scratch data excluded from the runtime package.
 - Existing global privacy hook retained; initial commit/push receipt is in
   [AL-001](../work/tasks/AL-001-private-repository.md).
+- Outgoing Git history passed Gitleaks before the first push. GitHub's main
+  head matched bootstrap `ed2734d65c77a8411fb4af5f56bedce5bbc5f45e`.
+- GitHub recognized Apache-2.0 and confirmed private visibility after the push.
+  The registered test workflow is active with zero runs.
+
+Verdict: **GO for this initial private publication**, with the documented
+scanner coverage and hosted-plan limits. This receipt is not permission for
+a later public release or evidence of live-agent compatibility.
 
 Raw scan/test artifacts remain outside the repository. Generated tarballs,
 scratch installations, credentials and logs are not tracked or uploaded.

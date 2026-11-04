@@ -1,9 +1,10 @@
 # AL-001: Establish the private AgentLink repository
 
-Status: In progress
+Status: Done
 Owner: @codex
 Requested by: @prplkane
 Started: 2026-11-05
+Completed: 2026-11-05
 
 ## Outcome
 
@@ -49,8 +50,22 @@ Expected files: root documentation/metadata, `.github/`, `scripts/`,
   Trivy reported no findings but had no dependency or supported IaC targets.
 - Private repository created; merge/Actions/Dependabot settings were applied
   and read back. Hosted tests were not dispatched.
+- Bootstrap `ed2734d65c77a8411fb4af5f56bedce5bbc5f45e` passed the existing
+  privacy hook, passed an outgoing-history Gitleaks scan and was pushed to main.
+- Remote head, private visibility, Apache-2.0 recognition and the active
+  manual workflow were verified. The workflow has zero test runs.
+- Repository policy rejected a deliberately tracked synthetic environment
+  file in a disposable fixture. The actual repository remains clean.
+- Roundtable and Career Hub were left unchanged.
 
-## Handoff
+## Final receipt
 
-Commit through the retained privacy hook, scan outgoing Git history, push the
-bootstrap and verify the remote head and privacy before closing this task.
+The requested repository, license, document review, adapted guidance and work
+ledger are available at [prplkane/agentlink](https://github.com/prplkane/agentlink).
+Local tests and publication checks passed within the coverage described in
+[repository setup](../../process/repository-setup.md).
+
+Account limitation: main has no enforced branch protection; GitHub requires
+Pro for that feature on this private repository. Repository-level Secret
+Protection/CodeQL is not enabled. Manual hosted and real-agent tests remain
+explicit future qualification, not uncompleted setup work.
