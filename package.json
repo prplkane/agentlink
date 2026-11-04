@@ -1,0 +1,39 @@
+{
+  "name": "@local/agentlink",
+  "version": "0.2.1",
+  "private": true,
+  "type": "module",
+  "description": "Lightweight standard ACP gateway with centrally managed bridges and local discovery",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./client": "./src/client.mjs"
+  },
+  "bin": {
+    "agentlink": "./src/cli.mjs"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "examples/",
+    "docs/laptop-testing.md",
+    "docs/architecture.md",
+    "NOTICE",
+    "docs/licenses/roundtable-MIT.txt"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check:repo": "node scripts/check-repository.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/prplkane/agentlink.git"
+  },
+  "bugs": {
+    "url": "https://github.com/prplkane/agentlink/issues"
+  },
+  "homepage": "https://github.com/prplkane/agentlink#readme"
+}

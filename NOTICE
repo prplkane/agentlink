@@ -1,0 +1,15 @@
+AgentLink
+Copyright 2026 prplkane
+
+AgentLink is licensed under the Apache License, Version 2.0.
+
+The engineering and contribution documentation adapts general practices from:
+
+- Career Hub (prplkane/career-hub-dev), Apache License 2.0.
+- Roundtable (prplkane/roundtable-dev), MIT License, copyright 2026 prplkane.
+  Its license notice is retained in docs/licenses/roundtable-MIT.txt.
+
+The adapted documents were condensed and rewritten for AgentLink on
+2026-11-05. Project engine instructions, private data and historical task
+records were not transferred. The file-by-file selection and source revisions
+are recorded in docs/process/source-document-review.md.
