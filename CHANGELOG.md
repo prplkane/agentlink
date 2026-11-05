@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add an explicit offline Roundtable integration check using managed fake bridges,
+  full reviews through standard ACP, central updates, cancellation and usage limits.
+  Document the Roundtable ACP client setup; AgentLink's runtime is unchanged.
+
 - Establish a private repository, Apache-2.0 licensing, contribution guidance
   and a compact cross-agent engineering ledger.
 - Adapt reusable working, testing and review practices from Roundtable and

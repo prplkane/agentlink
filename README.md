@@ -74,6 +74,11 @@ sessions. Profiles, installed bridge versions and configuration are shared.
 Clients retain ownership of session setup, working directories, permission
 decisions, task deadlines and their own conversation history.
 
+Roundtable's ACP integration selects a saved profile for each seat and chairman.
+Its client uses ACP v1 with fresh sessions for stateless reviews. See
+[Roundtable testing](docs/laptop-testing.md#roundtable-integration) for the offline
+cross-project check and real-agent qualification steps.
+
 The gateway forwards JSON-RPC in both directions: initialization/version
 negotiation, capabilities, authentication, prompts, streaming, cancellation,
 client filesystem/terminal requests, and vendor extensions. Unsupported methods
