@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { chmod, mkdir, open, readdir, realpath, rm, stat, unlink, writeFile } from 'node:fs/promises';
-import { basename, delimiter, dirname, join, relative, resolve, sep } from 'node:path';
+import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { error, profileName, strings } from './profiles.mjs';
 import { BridgeRegistry } from './runtime.mjs';
@@ -226,10 +226,7 @@ export class BridgeStore extends BridgeRegistry {
     const used = new Set(records.map(record => record.installKey));
     for (const profile of profiles) {
       if (profile.bridge) continue; // Managed profiles resolve the active record, not their old snapshot.
-      for (const argument of [profile.command, ...profile.prefixArgs]) {
-        const key = relative(this.installations, argument).split(sep)[0];
-        if (/^[a-f0-9]{64}$/.test(key)) used.add(key);
-      }
+      for (const key of this.referencedInstallations(profile)) used.add(key);
     }
     let leases = [], installations = [];
     try { leases = await readdir(this.leases); } catch (cause) { if (cause.code !== 'ENOENT') throw cause; }

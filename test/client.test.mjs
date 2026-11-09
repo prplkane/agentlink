@@ -160,10 +160,11 @@ test('missing executable is a launch error, not a silent stall', async t => {
   await assert.rejects(client.initialize(), { code: 'SPAWN_FAILED' });
 });
 
-test('registry uses explicit argv, has no auto-install or unsupported AGY fallback', () => {
+test('registry uses explicit argv and the native Antigravity ACP command without auto-install', () => {
   assert.deepEqual(planProvider('kimi', { executable: process.execPath, prefixArgs: ['entry.mjs'] }),
     { command: process.execPath, args: ['entry.mjs', 'acp'] });
-  assert.throws(() => planProvider('antigravity', { executable: process.execPath }), /No supported/);
+  assert.deepEqual(planProvider('antigravity', { executable: process.execPath }),
+    { command: process.execPath, args: ['acp'] });
   assert.throws(() => planProvider('unrecognized'), /Unknown provider/);
   assert.throws(() => new AcpClient({ command: 'node', cwd }), /absolute/);
 });

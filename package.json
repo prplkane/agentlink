@@ -1,7 +1,6 @@
 {
-  "name": "@local/agentlink",
-  "version": "0.2.1",
-  "private": true,
+  "name": "@prplkane/agentlink",
+  "version": "0.3.0-beta.1",
   "type": "module",
   "description": "Lightweight standard ACP gateway with centrally managed bridges and local discovery",
   "exports": {
@@ -17,6 +16,7 @@
     "examples/",
     "docs/laptop-testing.md",
     "docs/architecture.md",
+    "docs/acp-qualification.md",
     "NOTICE",
     "docs/licenses/roundtable-MIT.txt"
   ],
@@ -35,5 +35,9 @@
   "bugs": {
     "url": "https://github.com/prplkane/agentlink/issues"
   },
-  "homepage": "https://github.com/prplkane/agentlink#readme"
+  "homepage": "https://github.com/prplkane/agentlink#readme",
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta"
+  }
 }

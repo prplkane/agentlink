@@ -112,15 +112,24 @@ test('a changed CLI is inspected rather than receiving the old agent arguments',
   assert.ok((await c.events()).filter(e => e.type === 'launch').every(e => ['--help', '-h'].includes(e.args[0])));
 });
 
-test('refresh repairs stale arguments, while check does not rewrite profiles', async t => {
+test('refresh rediscovers stale help-derived arguments, while check does not rewrite profiles', async t => {
   const c = await context(t);
-  await c.manager.add('refreshable', { ...c.launch('flag'), acpArgs: ['old-mode'], verify: false });
-  assert.equal((await c.events()).length, 0);
+  const profile = await c.manager.add('refreshable', c.launch('flag'));
+  await c.manager.store.save({ ...profile, acpArgs: ['old-mode'] }, { replace: true });
   const updated = await c.manager.refresh('refreshable');
   assert.deepEqual(updated.acpArgs, ['--acp']);
   const before = await readFile(c.manager.store.path('refreshable'), 'utf8');
   assert.equal((await c.manager.check('refreshable')).status, 'initialize-passed');
   assert.equal(await readFile(c.manager.store.path('refreshable'), 'utf8'), before);
+});
+
+test('failed refresh preserves an exact manual profile instead of dropping its arguments', async t => {
+  const c = await context(t);
+  await c.manager.add('exact', { ...c.launch('flag'), acpArgs: ['old-mode'], verify: false });
+  const before = await readFile(c.manager.store.path('exact'), 'utf8');
+  await assert.rejects(c.manager.refresh('exact'), { code: 'ACP_VERIFICATION_FAILED' });
+  assert.equal(await readFile(c.manager.store.path('exact'), 'utf8'), before);
+  assert.deepEqual((await c.events()).filter(e => e.type === 'launch').map(e => e.args), [['old-mode']]);
 });
 
 for (const mode of ['unsupported', 'fake']) test(`${mode} is not saved as a usable ACP agent`, async t => {

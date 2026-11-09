@@ -62,7 +62,10 @@ export async function inProbeDirectory(callback) {
   try { return await callback(directory); }
   finally {
     if (dirname(directory) !== base || !basename(directory).startsWith('agentlink-probe-')) throw error('INVALID_PATH', 'Unexpected probe directory.');
-    await rm(directory, { recursive: true, force: true });
+    // Windows may retain a just-stopped descendant's cwd for a short time.
+    // Retry only transient filesystem errors; do not replace the probe outcome
+    // with a one-off EBUSY, and still surface a persistent cleanup failure.
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }
 

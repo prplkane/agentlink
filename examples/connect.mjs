@@ -1,6 +1,6 @@
 import { stripVTControlCharacters } from 'node:util';
 import { createInterface } from 'node:readline/promises';
-import { agentlink } from '@local/agentlink';
+import { agentlink } from '@prplkane/agentlink';
 
 const display = value => stripVTControlCharacters(String(value ?? '')).replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
 const label = value => display(value).replace(/[\r\n\t]/g, ' ');

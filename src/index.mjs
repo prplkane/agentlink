@@ -190,9 +190,13 @@ export class AgentLink extends AgentRuntime {
   async refresh(name, options = {}) {
     return this.mutate(async () => {
       const existing = await this.get(name), current = await this.resolveProfile(existing);
+      // Exact user argv and managed bridge recipes remain authoritative. Only
+      // help/known external profiles need command discovery again on refresh.
+      const keepArgs = existing.bridge || existing.discovery.method === 'manual';
       const discovered = await discoverAgent({ command: current.command, prefixArgs: current.prefixArgs,
-        provider: existing.provider ?? undefined, helpArgs: existing.discovery.helpArgs, ...options,
-        env: { ...(options.env || process.env), ...current.env }, acpArgs: undefined });
+        provider: existing.provider ?? undefined, helpArgs: existing.discovery.helpArgs,
+        acpArgs: keepArgs ? current.acpArgs : undefined, ...options,
+        env: { ...(options.env || process.env), ...current.env } });
       const bridge = existing.bridge ? { ...existing.bridge,
         useDefaultArgs: JSON.stringify(discovered.acpArgs) === JSON.stringify((await this.bridges.get(existing.bridge.id)).launch.acpArgs) } : undefined;
       return this.store.save({ ...existing, ...discovered, ...(bridge ? { bridge } : {}), updatedAt: new Date().toISOString() }, { replace: true });

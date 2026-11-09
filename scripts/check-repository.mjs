@@ -37,7 +37,12 @@ for (const { mode, path } of entries) {
 }
 const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 if (pkg.version !== version) failures.push('package.json and src/version.mjs versions disagree.');
-if (pkg.private !== true) failures.push('Keep npm publication disabled while this repository is private.');
+if (pkg.name !== '@prplkane/agentlink' || pkg.private === true || pkg.publishConfig?.access !== 'public') {
+  failures.push('Release identity must be the public @prplkane/agentlink package.');
+}
+if (pkg.version.includes('-') && pkg.publishConfig?.tag !== 'beta') {
+  failures.push('Prerelease packages must use the beta distribution tag.');
+}
 if (Object.keys(pkg.dependencies || {}).length) failures.push('Runtime dependency added; review the zero-dependency policy explicitly.');
 if (!pkg.license || !existsSync(resolve(root, 'LICENSE'))) failures.push('Package licensing is incomplete.');
 if (failures.length) {

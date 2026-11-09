@@ -72,6 +72,23 @@ test('an external launch inside a managed installation keeps its running version
   assert.deepEqual((await c.manager.pruneBridges()).removed, [record.installKey]);
 });
 
+test('Windows external references retain installations and leases across path casing', { skip: process.platform !== 'win32' }, async t => {
+  const c = await setup(t);
+  const record = await c.manager.installBridge('engine', { kind: 'binary', version: '1', url: fixture, bin: 'agent.mjs' }, { offline: true });
+  const launch = { ...record.launch, prefixArgs: record.launch.prefixArgs.map(argument =>
+    argument.replace(record.installKey, record.installKey.toUpperCase())) };
+  await c.manager.add('external', { ...launch, external: true });
+  await c.manager.removeBridge('engine');
+  assert.deepEqual((await c.manager.pruneBridges()).removed, [], 'the saved external profile retains its installation');
+  await access(launch.prefixArgs[0]);
+  const { release } = await c.manager.acquire('external');
+  try {
+    await c.manager.remove('external');
+    assert.deepEqual((await c.manager.pruneBridges()).removed, [], 'the acquired launch retains a canonical installation lease');
+  } finally { await release(); }
+  assert.deepEqual((await c.manager.pruneBridges()).removed, [record.installKey]);
+});
+
 test('offline managed npm bridge is shared, updated centrally and retains a live old version', async t => {
   const c = await setup(t);
   const one = await npmFixture(c.root, '1.0.0');

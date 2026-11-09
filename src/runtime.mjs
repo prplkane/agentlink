@@ -43,7 +43,9 @@ export class BridgeRegistry {
   async remove(id) { await this.get(id); await unlink(this.path(id)); }
   referencedInstallations(profile) {
     return [...new Set([profile.command, ...profile.prefixArgs].filter(isAbsolute).map(path =>
-      relative(this.installations, path).split(sep)[0]).filter(key => /^[a-f0-9]{64}$/.test(key)))];
+      relative(this.installations, path).split(sep)[0])
+      .map(key => process.platform === 'win32' ? key.toLowerCase() : key)
+      .filter(key => /^[a-f0-9]{64}$/.test(key)))];
   }
 }
 

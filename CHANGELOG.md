@@ -1,6 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.3.0-beta.1 — 2026-11-09
+
+- Prepare the first public beta as `@prplkane/agentlink`, retaining zero runtime
+  dependencies and the existing standard ACP boundary.
+
+- Preserve Windows external references and active leases when an installation
+  path uses different letter casing; pruning uses the same reference resolver.
+- Include live qualification in the package and clarify runtime lease writes,
+  custom home placement and source-only development links.
+
+- Fix v2 discovery to use its actual initialization fields and retain v1 downgrade
+  metadata. Update the independent check example and protocol fixtures.
+- Keep explicit and managed launch arguments during refresh, and retry transient
+  Windows probe-directory cleanup failures without masking a completed probe.
+- Recognize native Antigravity `agy acp` and record live Roundtable qualification
+  for Codex, Claude, agy and an offline small-agent mimic, including remaining limits.
 
 - Add an explicit offline Roundtable integration check using managed fake bridges,
   full reviews through standard ACP, central updates, cancellation and usage limits.

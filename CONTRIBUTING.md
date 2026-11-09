@@ -53,8 +53,8 @@ The existing global Git privacy hook remains in force.
 
 Keep `package.json` and `src/version.mjs` versions aligned when releasing.
 Inspect package contents and test an offline installation before sharing a
-new artifact. The npm package remains `private: true` to prevent accidental
-registry publication.
+new artifact. Prereleases use the `beta` distribution tag. Registry publication
+requires an explicit maintainer instruction and the completed privacy/release gate.
 
 AgentLink is licensed under [Apache-2.0](LICENSE). Contributions use the same
 license. Attribution for adapted process documents is retained in [NOTICE](NOTICE).
