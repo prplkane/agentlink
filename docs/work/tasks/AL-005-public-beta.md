@@ -54,3 +54,10 @@ The sanitized AL-003/AL-004 candidate is part of this release.
   checks passed. Its public export passes the four public-tree/privacy checks.
 - Registry publication, final repository readback and released-package Roundtable
   integration remain pending.
+- GitHub does not evaluate `workflow_dispatch` job checks for required PR status
+  ([documented restriction](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#checks-from-some-workflow-jobs-are-not-evaluated)).
+  The final source also passed a second manual matrix, but merge enforcement
+  correctly remained blocked. Add an opt-in `pull_request: labeled` trigger;
+  the maintainer applies `run-offline-tests` for merge qualification. Every label
+  event runs the suite without a conditional skipped success. No automatic
+  push, PR-open or scheduled compute is introduced.

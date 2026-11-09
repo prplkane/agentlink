@@ -8,7 +8,10 @@ reporting, Dependabot alerts and security updates are enabled. Main requires a P
 resolved conversations and all six offline matrix checks against an up-to-date base;
 these rules also apply to administrators. Force pushes and branch deletion are blocked.
 The sole maintainer may merge their own release PR after checks; no second review is
-required. Actions remain read-only, SHA-pinned and manually dispatched.
+required. Actions remain read-only and SHA-pinned. Hosted compute is opt-in:
+direct workflow dispatch or an explicitly added PR label. For required PR checks,
+add `run-offline-tests`; remove/re-add it after another push. No job skips based on
+the label's name, so adding a different label still runs the complete suite.
 
 The global privacy guard remains active. This repository disables the broad private
 exception and approves only `docs/process/review-checklist.md`,

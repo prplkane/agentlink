@@ -21,6 +21,12 @@ The initial repository setup is a bootstrap exception to the branch workflow.
 Subsequent changes use a branch and a PR; each independently active writer
 uses its own checkout/worktree.
 
+Hosted tests are opt-in. Add the `run-offline-tests` label to a PR to run the six
+required platform jobs. After pushing another commit, remove and re-add the label.
+Any newly added PR label runs the suite; there is no conditional skipped success.
+A direct manual workflow dispatch is useful for research but does not satisfy
+GitHub's required PR checks.
+
 ## Reviewable changes
 
 Keep a PR focused on one outcome. Explain what was wrong, the resulting
