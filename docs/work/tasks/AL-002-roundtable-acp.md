@@ -1,6 +1,6 @@
 # AL-002: Roundtable reviews through standard ACP
 
-Status: Ready for review (local branches)
+Status: Done (released with AL-005)
 Owner: Codex
 Started: 2026-11-05
 

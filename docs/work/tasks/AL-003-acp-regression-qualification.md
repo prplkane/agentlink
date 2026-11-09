@@ -1,6 +1,6 @@
 # AL-003: ACP regression and Roundtable qualification
 
-Status: Ready for review (local branches)
+Status: Done (released with AL-005)
 Owner: Codex
 Started: 2026-11-09
 

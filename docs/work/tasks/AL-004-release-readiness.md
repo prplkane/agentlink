@@ -1,6 +1,6 @@
 # AL-004: ACP integration release readiness
 
-Status: Ready for review
+Status: Done (release conditions completed in AL-005)
 Owner: Codex
 Started: 2026-11-09
 

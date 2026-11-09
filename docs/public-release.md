@@ -2,16 +2,16 @@
 
 ## Decision
 
-**Conditional GO for a small public beta; do not publish the private candidate
-unchanged.** No embedded credential, private key, private personal record, personal
+**GO for the published 0.3.0-beta.1; the original audit conditions are complete.**
+No embedded credential, private key, private personal record, personal
 home path or personal email was found in the reviewed source and reachable Git
 history. The source security audit found no reportable vulnerability under the
 documented local, same-user trust model. This is evidence from a bounded review,
 not a claim that every defect or provider risk has been eliminated.
 
 The audit found and fixed a Windows installation-retention bug and corrected
-packaging/documentation defects. The remaining publication conditions are the
-public-document policy, release identity, and release-time repository setup below.
+packaging/documentation defects. The publication conditions were the public-document
+policy, release identity, and release-time repository setup below.
 This document records the pre-publication audit. The maintainer subsequently
 authorized a public beta; [AL-005](work/tasks/AL-005-public-beta.md) records the
 release identity, platform checks, publication and Roundtable adoption.
