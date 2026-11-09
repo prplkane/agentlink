@@ -1,6 +1,6 @@
-# Testing AgentLink 0.2.1 on another laptop
+# Testing the AgentLink public beta on another laptop
 
-Bring `local-agentlink-0.2.1.tgz`. Node.js 22 or newer with npm is required.
+Use `@prplkane/agentlink@0.3.0-beta.1`. Node.js 22 or newer with npm is required.
 AgentLink has no npm runtime dependencies; the agents and selected bridges have
 their own dependencies. Do not copy profiles blindly between machines because
 external executable paths are machine-specific.
@@ -8,14 +8,14 @@ external executable paths are machine-specific.
 ## Install once
 
 ~~~sh
-npm install -g ./local-agentlink-0.2.1.tgz
+npm install -g @prplkane/agentlink@0.3.0-beta.1
 agentlink --version
 agentlink --help
 agentlink where
 agentlink doctor
 ~~~
 
-The version should be `0.2.1`. Installation of this tarball alone downloads no
+The version should be `0.3.0-beta.1`. Installation of AgentLink alone downloads no
 vendor bridge.
 
 ## Configure the agents you have
@@ -98,8 +98,67 @@ In your chosen ACP application, test one small task with each agent, then:
    connections use it while an existing session can finish on the old version.
 6. End those sessions, then run `agentlink bridge prune` to remove unused versions.
 
-Roundtable's direct CLI adapters have not been migrated in this task. It needs
-a one-time standard ACP client integration to use the AgentLink launcher.
+## Roundtable integration
+
+The [2026-11-09 qualification](acp-qualification.md) includes live results for
+Codex, Claude and agy, plus a deterministic small-agent mimic. The installed
+Roundtable must contain the ACP integration; a direct-CLI-only release will not
+offer AgentLink seats. Use the updated integration checkout for the test below.
+
+Use a Roundtable checkout containing `src/adapters/acp.js`. Its new **AgentLink
+(ACP)** choice connects seats and the chairman to saved profiles. Existing direct
+CLI choices remain available. No AgentLink SDK is imported into Roundtable.
+
+Before testing vendors, this command from the AgentLink checkout runs a full
+offline review through the actual Roundtable server and AgentLink gateway:
+
+~~~sh
+node scripts/test-roundtable.mjs /absolute/path/to/roundtable
+~~~
+
+It creates temporary profiles and managed fake bridges, verifies two discussion
+rounds and a ready chairman verdict, updates a bridge centrally, then checks
+cancellation and missing-usage behavior. No real user store or vendor CLI is used.
+The integration script is developer tooling and is not included in the npm package.
+
+For real agents on the other laptop:
+
+1. Configure/check profiles with the commands above and complete vendor sign-in.
+2. Start the updated Roundtable. If AgentLink is not globally installed, set
+   `ROUNDTABLE_AGENTLINK_CLI` to its absolute `src/cli.mjs` path in the shell that
+   starts Roundtable. Set `AGENTLINK_HOME` there only when using a custom shared store.
+3. Choose **AgentLink (ACP)** for two seats and the chairman. Enter the saved
+   profile names, leave Model/effort at default and use stateless memory.
+4. Use trusted profiles configured to disable their own tools. Roundtable denies
+   client tools and stops reported activity, but ACP cannot sandbox an agent's
+   built-in tools or suppress all customization. The profile controls its billing.
+5. Run a small review and wait for the chairman verdict. Verify cancellation,
+   then explicitly update a bridge and run another review with the same profile names.
+
+This client currently supports ACP v1 text reviews, fresh sessions and optional
+advertised model selection. It does not offer session resume, web research or
+automatic login through ACP. Optional end-turn token usage is not guaranteed;
+when a bridge omits it, Roundtable's seat cap stops further calls for that seat.
+That may prevent critique rounds even though initialization succeeds. The chairman
+can still summarize usable replies. Report this as a vendor qualification gap,
+not a successful full review. AgentLink forwards the bridge's capabilities unchanged.
+
+Use a recent `agy acp` for Antigravity (`--provider antigravity`), not a prompt/CLI
+output shim. [Google documents native ACP](https://antigravity.google/docs/cli/acp/),
+while its [FAQ](https://antigravity.google/docs/faq) separately restricts third-party
+wrappers under consumer plans. Protocol compatibility does not settle that policy.
+The live qualification obtained the user's explicit terms/isolation acknowledgment.
+
+Reasoning effort is inherited from the profile/vendor configuration. A small model
+can still inherit a high effort setting: the qualification observed Codex `max`
+during session setup and its chairman timed out at the test's 60-second limit.
+The requested rerun used a separate temporary profile with
+`model_reasoning_effort: "low"` in the Codex bridge's existing `CODEX_CONFIG` JSON;
+the same model then completed chairman synthesis in 12.2 seconds. No AgentLink
+runtime change was needed. Bridge defaults are provider-specific; merge the
+setting with the profile's existing configuration rather than discarding it.
+Choose a suitable profile default and a realistic per-call deadline before a live
+review; do not automatically retry a timed-out verdict. Unknown usage remains unknown.
 
 ## Useful diagnostics
 

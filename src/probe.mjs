@@ -5,7 +5,7 @@ import { stopProcess } from './process.mjs';
 import { error } from './profiles.mjs';
 
 // Initialization only. Unlike the legacy text client, this probe can negotiate
-// both published protocol generations without implementing their prompt flows.
+// v1 and the v2 draft without implementing their different prompt flows.
 export async function probeAcp(launch, { cwd, env = process.env, timeoutMs = 3000, signal } = {}) {
   signal?.throwIfAborted();
   const child = spawn(launch.command, [...launch.prefixArgs, ...launch.acpArgs], {
@@ -27,17 +27,19 @@ export async function probeAcp(launch, { cwd, env = process.env, timeoutMs = 300
           return;
         }
         const value = message.result;
-        if (!value || ![1, 2].includes(value.protocolVersion) || !value.agentCapabilities ||
-            typeof value.agentCapabilities !== 'object' || Array.isArray(value.agentCapabilities)) {
+        const capabilities = value?.protocolVersion === 2 ? value.capabilities : value?.agentCapabilities;
+        const info = value?.protocolVersion === 2 ? value.info : value?.agentInfo;
+        if (!value || ![1, 2].includes(value.protocolVersion) || !capabilities ||
+            typeof capabilities !== 'object' || Array.isArray(capabilities)) {
           reject(error('UNSUPPORTED_PROTOCOL', 'Agent did not negotiate ACP v1 or v2.'));
           return;
         }
         const agentInfo = {};
         for (const field of ['name', 'version', 'title']) {
-          if (typeof value.agentInfo?.[field] === 'string') agentInfo[field] = value.agentInfo[field].slice(0, 256);
+          if (typeof info?.[field] === 'string') agentInfo[field] = info[field].slice(0, 256);
         }
         resolve({ status: 'initialize-passed', checkedAt: new Date().toISOString(),
-          protocolVersion: value.protocolVersion, agentInfo, capabilities: value.agentCapabilities,
+          protocolVersion: value.protocolVersion, agentInfo, capabilities,
           authMethods: Array.isArray(value.authMethods) ? value.authMethods : [] });
       } });
       frames.resume();
@@ -49,7 +51,7 @@ export async function probeAcp(launch, { cwd, env = process.env, timeoutMs = 300
       child.once('error', () => reject(error('SPAWN_FAILED', 'Could not start the configured ACP executable.')));
       child.once('exit', code => reject(error('PROCESS_EXIT', 'Agent exited during initialization (' + code + ').')));
       child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 'agentlink-probe', method: 'initialize',
-        params: { protocolVersion: 2, clientCapabilities: {}, clientInfo: { name: 'agentlink-discovery', version } } }) + '\n');
+        params: { protocolVersion: 2, capabilities: {}, info: { name: 'agentlink-discovery', version } } }) + '\n');
     });
   } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); await stopProcess(child); }
 }

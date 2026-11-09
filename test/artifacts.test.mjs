@@ -109,7 +109,8 @@ test('Python bridge installs from a local wheel into a shared pinned environment
     ' for line in sys.stdin:\n' +
     '  m=json.loads(line)\n' +
     '  if m.get("method")=="initialize":\n' +
-    '   print(json.dumps({"jsonrpc":"2.0","id":m["id"],"result":{"protocolVersion":m["params"]["protocolVersion"],"agentCapabilities":{},"agentInfo":{"name":"python-fixture","version":"1.0.0"}}}),flush=True)\n';
+    '   v=m["params"]["protocolVersion"]\n' +
+    '   print(json.dumps({"jsonrpc":"2.0","id":m["id"],"result":{"protocolVersion":v,("capabilities" if v==2 else "agentCapabilities"):{},("info" if v==2 else "agentInfo"):{"name":"python-fixture","version":"1.0.0"}}}),flush=True)\n';
   const entries = [
     ['agentlink_offline_py/__init__.py', code],
     [meta + 'METADATA', 'Metadata-Version: 2.1\nName: agentlink-offline-py\nVersion: 1.0.0\n'],

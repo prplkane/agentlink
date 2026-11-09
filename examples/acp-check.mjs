@@ -29,5 +29,5 @@ reader.on('line', line => {
   } catch (cause) { console.error(cause.message); process.exitCode = 1; child.stdin.end(); }
 });
 child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {
-  protocolVersion: 2, clientCapabilities: {}, clientInfo: { name: 'independent-acp-check', version: '1' }
+  protocolVersion: 2, capabilities: {}, info: { name: 'independent-acp-check', version: '1' }
 } }) + '\n');

@@ -38,9 +38,9 @@ const recipes = {
   vibe: { kind: 'native-acp', args: [], executableName: 'vibe-acp',
     source: 'https://github.com/mistralai/mistral-vibe' },
   antigravity: Object.freeze({
-    kind: 'unavailable', args: [],
-    source: 'https://antigravity.google/docs/faq',
-    note: 'No supported consumer-plan third-party ACP route established.'
+    kind: 'native-acp', args: ['acp'], executableName: 'agy',
+    source: 'https://antigravity.google/docs/cli/acp/',
+    note: 'Native ACP requires a recent agy CLI. Review vendor terms for your use; native protocol support does not authorize third-party wrappers.'
   })
 };
 export const providers = Object.freeze(Object.fromEntries(Object.entries(recipes).map(([name, recipe]) =>

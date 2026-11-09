@@ -41,8 +41,8 @@ for (const version of [1, 2]) test('standard ACP v' + version + ' negotiation an
   const capabilities = { fs: { readTextFile: true, writeTextFile: true }, terminal: true, auth: { terminal: true }, _meta: { custom: 'yes' } };
   const init = await client.initialize(version, capabilities);
   assert.equal(init.protocolVersion, version);
-  assert.deepEqual(init._meta.receivedClient.clientCapabilities, capabilities);
-  assert.deepEqual(init.agentCapabilities._meta, { 'fixture/custom': { enabled: true } });
+  assert.deepEqual(init._meta.receivedClient[version === 2 ? 'capabilities' : 'clientCapabilities'], capabilities);
+  assert.deepEqual((version === 2 ? init.capabilities : init.agentCapabilities)._meta, { 'fixture/custom': { enabled: true } });
   assert.equal(init.authMethods[0].type, 'terminal');
   const session = await client.session(c.root);
   assert.equal(session.configOptions[0].id, 'fixture-style');
@@ -177,6 +177,6 @@ test('exported launch config and the independent check example use the actual ga
   const example = await execute(process.execPath, [join(directory, '../examples/acp-check.mjs'), 'agent'], {
     cwd: c.root, env: { ...process.env, AGENTLINK_HOME: c.home }, timeout: 10000, windowsHide: true
   });
-  assert.equal(JSON.parse(example.stdout).agentInfo.name, 'offline-agent');
+  assert.equal(JSON.parse(example.stdout).info.name, 'offline-agent');
   assert.equal((await c.command(['--version'])).stdout.trim(), version);
 });

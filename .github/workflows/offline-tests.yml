@@ -1,7 +1,13 @@
 name: Offline fixture tests
 
-# Hosted compute is opt-in. Local checks remain required before handoff.
-on: workflow_dispatch
+# Hosted compute is opt-in: dispatch directly, or add a PR label to qualify a
+# merge. GitHub does not evaluate workflow_dispatch jobs as required PR checks.
+# Run on every label event without a skipping condition, so a different label
+# cannot turn required tests green without executing them.
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: read

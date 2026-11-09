@@ -30,12 +30,20 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
     const message = JSON.parse(line);
     record({ rpc: message });
     const reply = result => send({ jsonrpc: '2.0', id: message.id, result });
-    if (message.method === 'initialize') reply({ protocolVersion: message.params.protocolVersion,
-      agentInfo: { name: process.env.FIXTURE_NAME || 'offline-agent', version },
-      agentCapabilities: { loadSession: true, promptCapabilities: { image: true }, _meta: { 'fixture/custom': { enabled: true } } },
+    if (message.method === 'initialize') {
+      const v2 = message.params.protocolVersion === 2;
+      if (mode === 'strict-init' && (v2 ? !message.params.info : !message.params.clientInfo)) {
+        return send({ jsonrpc: '2.0', id: message.id, error: { code: -32602, message: 'Missing implementation info' } });
+      }
+      reply({ protocolVersion: message.params.protocolVersion,
+      [v2 ? 'info' : 'agentInfo']: { name: process.env.FIXTURE_NAME || 'offline-agent', version },
+      [v2 ? 'capabilities' : 'agentCapabilities']: v2
+        ? { session: { prompt: { image: {} } }, _meta: { 'fixture/custom': { enabled: true } } }
+        : { loadSession: true, promptCapabilities: { image: true }, _meta: { 'fixture/custom': { enabled: true } } },
       authMethods: [{ id: 'terminal-login', name: 'Fixture login', type: 'terminal',
         args: mode === 'env-auth' ? [] : ['--login'], env: { FIXTURE_LOGIN: mode === 'env-auth' ? 'env-only' : 'yes' } }],
       _meta: { receivedClient: message.params } });
+    }
     else if (message.method === 'session/new') {
       const sessionId = 'session-' + ++nextSession;
       sessions.set(sessionId, message.params);

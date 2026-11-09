@@ -21,6 +21,12 @@ The initial repository setup is a bootstrap exception to the branch workflow.
 Subsequent changes use a branch and a PR; each independently active writer
 uses its own checkout/worktree.
 
+Hosted tests are opt-in. Add the `run-offline-tests` label to a PR to run the six
+required platform jobs. After pushing another commit, remove and re-add the label.
+Any newly added PR label runs the suite; there is no conditional skipped success.
+A direct manual workflow dispatch is useful for research but does not satisfy
+GitHub's required PR checks.
+
 ## Reviewable changes
 
 Keep a PR focused on one outcome. Explain what was wrong, the resulting
@@ -53,8 +59,8 @@ The existing global Git privacy hook remains in force.
 
 Keep `package.json` and `src/version.mjs` versions aligned when releasing.
 Inspect package contents and test an offline installation before sharing a
-new artifact. The npm package remains `private: true` to prevent accidental
-registry publication.
+new artifact. Prereleases use the `beta` distribution tag. Registry publication
+requires an explicit maintainer instruction and the completed privacy/release gate.
 
 AgentLink is licensed under [Apache-2.0](LICENSE). Contributions use the same
 license. Attribution for adapted process documents is retained in [NOTICE](NOTICE).

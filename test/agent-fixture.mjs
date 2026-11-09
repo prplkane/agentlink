@@ -33,7 +33,8 @@ if (help) {
     record({ type: 'rpc', message });
     const reply = result => send({ jsonrpc: '2.0', id: message.id, result });
     if (message.method === 'initialize') reply({ protocolVersion: mode === 'v2' ? 2 : 1,
-      agentInfo: { name: 'fixture-' + mode, version: '1.2.3' }, agentCapabilities: {},
+      [mode === 'v2' ? 'info' : 'agentInfo']: { name: 'fixture-' + mode, version: '1.2.3' },
+      [mode === 'v2' ? 'capabilities' : 'agentCapabilities']: {},
       authMethods: mode === 'auth' ? [{ id: 'login', name: 'Fixture login' }] : [] });
     else if (message.method === 'authenticate') { authenticated = true; reply({}); }
     else if (message.method === 'session/new') {

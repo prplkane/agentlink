@@ -17,6 +17,9 @@ The ACP command does not import management, installer, archive, discovery or
 legacy client modules. External launches outside the managed store need no
 lease lock or filesystem writes. External profiles that explicitly point into
 the managed store still acquire leases so pruning cannot remove running files.
+On Windows, installation-key casing is normalized for both saved references and
+leases. Reference tracking recognizes explicit absolute executable/argument paths;
+use a managed bridge reference for ownership through aliases or embedded arguments.
 
 The wire layer validates newline-delimited UTF-8 JSON-RPC and bounds individual
 frames. It preserves messages rather than maintaining a list of supported ACP
@@ -46,8 +49,8 @@ discovery metadata. A managed profile additionally references a bridge ID; the
 saved executable snapshot is not used as its active version pointer.
 
 Bridge records live in `bridges/ID.json`. Each contains a selected version, an
-installation key and launch metadata. Installation directories are immutable
-after publication and keyed by distribution, exact version, source and platform
+installation key and launch metadata. AgentLink does not modify installations
+after publication; their owning OS user still can. They are keyed by distribution, exact version, source and platform
 (plus Node module ABI for npm packages).
 
 Two bridge IDs using the same installation identity reuse the same files.
@@ -90,9 +93,18 @@ ACP commands are followed when advertised in command/option rows. An explicit
 help argument array handles other conventions. Help is treated as data, never
 as executable shell instructions or installation authority.
 
-The probe performs initialization only and recognizes negotiated ACP v1 or v2.
+The probe performs initialization only and recognizes negotiated ACP v1 or the
+v2 draft. It offers v2 using `info` and `capabilities`, then reads the response
+fields for the negotiated version (`agentInfo`/`agentCapabilities` in v1,
+`info`/`capabilities` in v2). The gateway still forwards the caller's own handshake.
 It saves advertised capabilities and authentication metadata. This does not
 verify model access, permissions enforcement, or complete task behavior.
+Temporary probe directory cleanup retries transient Windows filesystem contention
+for a bounded period; a persistent cleanup failure is still reported.
+
+Refresh retains explicit manual arguments and resolved managed bridge arguments.
+It rediscovers help/known external launches only. A failed exact refresh preserves
+the profile instead of dropping its options and activating a different launch.
 
 ## Modules
 
@@ -114,8 +126,9 @@ verify model access, permissions enforcement, or complete task behavior.
 Tests run independent ACP callers against fake agents, install locally created
 artifacts, and exercise updates and failures without vendor accounts.
 Windows is the execution host for this implementation pass. Python fixture
-installation is optional on hosts without Python. Linux/macOS and real-agent
-behavior still need their own execution results.
+installation is optional on hosts without Python. Linux/macOS remain unqualified;
+the [live qualification report](acp-qualification.md) records the tested vendor
+behavior and its limits separately from the offline suite.
 
 Windows process-tree cleanup uses taskkill while the owned bridge is alive.
 Native Job Object containment is not implemented, so descendants orphaned by a

@@ -5,19 +5,21 @@ once, then use its saved name from any ACP client. AgentLink manages selected
 bridges in your user account and exposes their actual capabilities through
 standard ACP.
 
-JavaScript / Node.js 22+. Zero npm runtime dependencies. This is the private
-0.2.1 implementation candidate, tested with offline fixtures on Windows.
-Real-agent testing remains for the user's laptop.
+JavaScript / Node.js 22+. Zero npm runtime dependencies. Public beta
+`0.3.0-beta.1`; the API and CLI may change before a stable release.
+Offline fixtures pass on Windows, Linux and macOS with Node 22 and 24.
+[Live ACP qualification](docs/acp-qualification.md) records Codex, Claude and agy
+results through Roundtable, including the initial chairman timeout, the successful
+low-effort rerun and remaining limits.
 
-Source repository: [prplkane/agentlink](https://github.com/prplkane/agentlink)
-(private for now). The npm package also remains private.
+Source repository: [prplkane/agentlink](https://github.com/prplkane/agentlink).
 
 ## Install and configure
 
 Install the packaged release once:
 
 ~~~sh
-npm install -g ./local-agentlink-0.2.1.tgz
+npm install -g @prplkane/agentlink@beta
 ~~~
 
 From a source checkout, substitute `node /absolute/path/to/src/cli.mjs` for
@@ -31,6 +33,9 @@ agentlink add kimi --command kimi
 agentlink add codex --provider codex
 agentlink add claude --provider claude
 
+# Native ACP in a recent Antigravity CLI (review vendor terms for your use):
+agentlink add agy --provider antigravity
+
 # Or use a bridge that you install and update yourself:
 agentlink add personal-claude --provider claude --external
 
@@ -39,7 +44,8 @@ agentlink check kimi
 ~~~
 
 Codex and Claude recipes install their upstream npm bridges on demand.
-Other recipes locate installed native ACP commands. AgentLink never downloads
+Other recipes, including Antigravity's `agy acp`, locate installed native ACP
+commands. AgentLink never downloads
 all providers. A bridge's dependencies and vendor runtime are separate from
 AgentLink's own footprint.
 
@@ -74,6 +80,11 @@ sessions. Profiles, installed bridge versions and configuration are shared.
 Clients retain ownership of session setup, working directories, permission
 decisions, task deadlines and their own conversation history.
 
+Roundtable's ACP integration selects a saved profile for each seat and chairman.
+Its client uses ACP v1 with fresh sessions for stateless reviews. See
+[Roundtable testing](docs/laptop-testing.md#roundtable-integration) for the offline
+cross-project check and real-agent qualification steps.
+
 The gateway forwards JSON-RPC in both directions: initialization/version
 negotiation, capabilities, authentication, prompts, streaming, cancellation,
 client filesystem/terminal requests, and vendor extensions. Unsupported methods
@@ -84,7 +95,8 @@ can relaunch AgentLink interactively, even for environment-only login methods.
 That marker is removed before the underlying bridge runs. No custom ACP method
 or application SDK is introduced.
 
-Runtime connections only read saved configuration and start the selected bridge.
+Runtime connections resolve saved configuration, acquire any required installation
+leases, and start the selected bridge.
 They never install, update, discover, or send a test prompt.
 The ACP entry point loads only the runtime modules. Installation, discovery and
 the compatibility client load only for management commands. External profiles
@@ -115,6 +127,11 @@ used. It never executes shell snippets or downloads URLs found in help text.
 The saved profile includes launch arguments, a help hash when available,
 capabilities and initialization status. It is personal configuration; adding
 an unfamiliar compatible agent does not require a repository change.
+
+`refresh` rediscovers help-derived external launches. Explicit `--acp-args`
+(including an empty array) and managed bridge arguments are rechecked as saved;
+refresh does not discard their options. To change an exact recipe, use `update`
+with new `--acp-args`, or supply `--command` to request discovery again.
 
 Inconclusive discovery does not prove an agent lacks ACP. Supply an exact launch
 command or an existing bridge when needed. If there is no usable ACP
@@ -194,8 +211,9 @@ Externally installed bridges are never uninstalled.
 ## Local storage and limits
 
 Default storage is `~/.agentlink/`; `AGENTLINK_HOME` or `--home` selects a different
-absolute directory. Use `agentlink where --json` to inspect it. No connection
-configuration is written into project repositories.
+absolute directory. Use `agentlink where --json` to inspect it. The default is
+outside project repositories; keep any custom home outside them too. AgentLink
+accepts an absolute custom path without checking whether it is inside a repository.
 
 For ACP launches, place `--home` before `acp`:
 
@@ -256,21 +274,21 @@ can be claimed as validated.
 See [laptop testing](docs/laptop-testing.md) for real-agent checks and
 [architecture](docs/architecture.md) for the maintenance boundaries.
 
-The original `@local/agentlink` library exports and `examples/connect.mjs` remain
+The original library exports and `examples/connect.mjs` remain
 for compatibility. That helper is text-only ACP v1. New integrations should use
 the standard gateway; the helper's limitations do not define the gateway.
 
 ## Working on this repository
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and the shared
-[AGENTS.md](AGENTS.md). Non-trivial changes use the
-[engineering work ledger](docs/work/README.md). This is repository coordination,
+Read [CONTRIBUTING.md](https://github.com/prplkane/agentlink/blob/main/CONTRIBUTING.md) and the shared
+[AGENTS.md](https://github.com/prplkane/agentlink/blob/main/AGENTS.md). Non-trivial changes use the
+[engineering work ledger](https://github.com/prplkane/agentlink/blob/main/docs/work/README.md). This is repository coordination,
 not an AgentLink runtime feature.
 
-The [source-document review](docs/process/source-document-review.md) describes
+The [source-document review](https://github.com/prplkane/agentlink/blob/main/docs/process/source-document-review.md) describes
 the guidance adapted from Roundtable and Career Hub, grouped by project, with
 explicit reasons for each inclusion and exclusion. See
-[repository setup](docs/process/repository-setup.md) for actual hosted settings.
+[repository setup](https://github.com/prplkane/agentlink/blob/main/docs/process/repository-setup.md) for actual hosted settings.
 
 ## License
 

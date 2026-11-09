@@ -84,8 +84,9 @@ export function rpcClient(home, name, { cwd, onRequest, env, launch } = {}) {
         pending.set(id, { resolve: resolveReply, reject, timer }); send({ id, method, params });
       });
     },
-    initialize(version = 1, capabilities = {}) { return this.request('initialize', { protocolVersion: version, clientCapabilities: capabilities,
-      clientInfo: { name: 'independent-offline-client', version: '1' }, _meta: { caller: 'kept' } }); },
+    initialize(version = 1, capabilities = {}) { return this.request('initialize', { protocolVersion: version,
+      [version === 2 ? 'capabilities' : 'clientCapabilities']: capabilities,
+      [version === 2 ? 'info' : 'clientInfo']: { name: 'independent-offline-client', version: '1' }, _meta: { caller: 'kept' } }); },
     async session(cwd) { return this.request('session/new', { cwd, mcpServers: [] }); },
     prompt(sessionId, text) { return this.request('session/prompt', { sessionId, prompt: [{ type: 'text', text }] }); },
     async close() {
