@@ -7,6 +7,7 @@ standard ACP.
 
 JavaScript / Node.js 22+. Zero npm runtime dependencies. Public beta
 `0.3.0-beta.1`; the API and CLI may change before a stable release.
+Offline fixtures pass on Windows, Linux and macOS with Node 22 and 24.
 [Live ACP qualification](docs/acp-qualification.md) records Codex, Claude and agy
 results through Roundtable, including the initial chairman timeout, the successful
 low-effort rerun and remaining limits.

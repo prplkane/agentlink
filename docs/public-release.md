@@ -98,6 +98,12 @@ fallback in the client.
 
 ## Publication conditions and order
 
+The maintainer authorized completion of these conditions in AL-005. The scoped
+beta identity, exact document policy and public repository protections are now
+configured. The six-platform fixture matrix passed; its only skips are four
+Windows-specific checks on Linux/macOS. The items below preserve the audit's
+original release sequence; AL-005 contains the current publication receipt.
+
 1. **Resolve the public-document policy before changing visibility.** The existing
    global Git privacy hook says internal documents stay out of a public tree; its
    private-repository exception is currently enabled. Three tracked files match

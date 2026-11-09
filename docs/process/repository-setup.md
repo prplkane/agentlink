@@ -1,4 +1,27 @@
-# Private repository setup
+# Repository setup
+
+## Public beta configuration — 2026-11-09
+
+The maintainer authorized the public beta in [AL-005](../work/tasks/AL-005-public-beta.md).
+The repository is now public. Secret scanning, push protection, private vulnerability
+reporting, Dependabot alerts and security updates are enabled. Main requires a PR,
+resolved conversations and all six offline matrix checks against an up-to-date base;
+these rules also apply to administrators. Force pushes and branch deletion are blocked.
+The sole maintainer may merge their own release PR after checks; no second review is
+required. Actions remain read-only, SHA-pinned and manually dispatched.
+
+The global privacy guard remains active. This repository disables the broad private
+exception and approves only `docs/process/review-checklist.md`,
+`docs/process/source-document-review.md` and `docs/vendor-review-2026-11-04.md` as
+sanitized public engineering documents. Content and tool-configuration checks still
+apply to those files. Six positive/negative synthetic guard checks passed.
+
+The [first public-beta matrix](https://github.com/prplkane/agentlink/actions/runs/42585475590)
+passed Windows/Linux/macOS on Node 22/24. Windows passed all 97 tests; Linux/macOS
+passed 93 and skipped only four Windows-specific cases. Python fixtures ran on all
+six jobs. The bootstrap record below is historical, not the current public policy.
+
+## Private bootstrap — 2026-11-05
 
 Repository: [prplkane/agentlink](https://github.com/prplkane/agentlink).
 Created and settings verified on November 5, 2026, using the authenticated

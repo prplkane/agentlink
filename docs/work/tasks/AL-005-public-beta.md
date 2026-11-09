@@ -37,4 +37,20 @@ The sanitized AL-003/AL-004 candidate is part of this release.
 
 ## Receipt
 
-Pending release preparation and hosted platform results.
+- Release commit `2d31d6a` passed the [six-job hosted matrix](https://github.com/prplkane/agentlink/actions/runs/42585475590):
+  Windows Node 22/24 each passed 97 tests; Linux/macOS Node 22/24 each passed 93
+  with exactly four Windows-only skips. No failures or Python fixture skips.
+- The scoped beta tarball installed offline. CLI version/help/config/doctor,
+  independent standard ACP v2 initialization, source equality and packaged
+  Markdown links passed. The package has 29 files and no runtime dependencies.
+- The public-document guard passed six synthetic checks: each of the three exact
+  approved paths is allowed; another internal document, tool configuration and
+  a synthetic secret in an approved document are still rejected. This repository
+  now has `leakguard.internal=false`.
+- The staged tree and all four reachable commits passed Gitleaks. Repository
+  checks and diff whitespace checks passed. Raw artifacts remain local.
+- Roundtable's npm launcher was still keyed to `@local/agentlink`; it now uses
+  the released scope, with an executable fixture regression. All 22 focused ACP
+  checks passed. Its public export passes the four public-tree/privacy checks.
+- Registry publication, final repository readback and released-package Roundtable
+  integration remain pending.
