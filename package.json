@@ -1,6 +1,6 @@
 {
   "name": "@prplkane/agentlink",
-  "version": "0.3.0-beta.1",
+  "version": "0.3.0-beta.2",
   "type": "module",
   "description": "Lightweight standard ACP gateway with centrally managed bridges and local discovery",
   "exports": {

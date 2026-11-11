@@ -1,6 +1,6 @@
 # Testing the AgentLink public beta on another laptop
 
-Use `@prplkane/agentlink@0.3.0-beta.1`. Node.js 22 or newer with npm is required.
+Use `@prplkane/agentlink@0.3.0-beta.2`. Node.js 22 or newer with npm is required.
 AgentLink has no npm runtime dependencies; the agents and selected bridges have
 their own dependencies. Do not copy profiles blindly between machines because
 external executable paths are machine-specific.
@@ -8,14 +8,14 @@ external executable paths are machine-specific.
 ## Install once
 
 ~~~sh
-npm install -g @prplkane/agentlink@0.3.0-beta.1
+npm install -g @prplkane/agentlink@0.3.0-beta.2
 agentlink --version
 agentlink --help
 agentlink where
 agentlink doctor
 ~~~
 
-The version should be `0.3.0-beta.1`. Installation of AgentLink alone downloads no
+The version should be `0.3.0-beta.2`. Installation of AgentLink alone downloads no
 vendor bridge.
 
 ## Configure the agents you have
