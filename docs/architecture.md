@@ -77,6 +77,9 @@ only checked descendants of the managed installation directory.
 Profile and bridge metadata are flushed before publication. A live-process
 lease is atomically written without a durability flush: it does not need to
 survive a machine restart when its owning process cannot survive either.
+On Windows, atomic replacement retries file-sharing conflicts up to five times
+with at most 750 ms of retry delay. A persistent failure leaves the old file in
+place and reports the error; replacement never deletes the destination first.
 
 No automatic deletion of previous versions occurs during an update. Users can
 prune after sessions finish and optionally clear the download cache. External

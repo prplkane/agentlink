@@ -1,7 +1,8 @@
 import { homedir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
-import { link, mkdir, open, readdir, readFile, rename, stat, unlink } from 'node:fs/promises';
+import { link, mkdir, open, readdir, readFile, stat, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { replaceFile } from './replace-file.mjs';
 
 export const error = (code, message) => Object.assign(new Error(message), { code });
 export const strings = value => Array.isArray(value) && value.every(item => typeof item === 'string' && !item.includes('\0'));
@@ -88,7 +89,7 @@ export class ProfileStore {
       finally { await handle.close(); }
       // A hard link publishes a complete new file without overwriting another user's
       // concurrent add. Updates use rename so readers see the old or the new JSON.
-      if (replace) await rename(temporary, destination);
+      if (replace) await replaceFile(temporary, destination);
       else await link(temporary, destination);
     } catch (cause) {
       if (cause.code === 'EEXIST') throw error('PROFILE_EXISTS', `Profile "${profile.name}" already exists. Use update or refresh.`);

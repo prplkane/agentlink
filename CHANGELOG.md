@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Retry transient Windows file-sharing conflicts during atomic profile and
+  bridge metadata replacement, including profile rollback. Persistent failures
+  preserve the old file and remain errors. No runtime dependency is added.
+
 ## 0.3.0-beta.1 — 2026-11-09
 
 - Prepare the first public beta as `@prplkane/agentlink`, retaining zero runtime

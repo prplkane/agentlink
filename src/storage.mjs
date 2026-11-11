@@ -1,7 +1,8 @@
-import { mkdir, open, readFile, rename, stat, unlink } from 'node:fs/promises';
+import { mkdir, open, readFile, stat, unlink } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { error } from './profiles.mjs';
+import { replaceFile } from './replace-file.mjs';
 
 export function inside(root, path) {
   const target = resolve(root, path);
@@ -27,7 +28,7 @@ export async function writeJson(path, value, { durable = true } = {}) {
       if (durable) await handle.sync();
     }
     finally { await handle.close(); }
-    await rename(temporary, path);
+    await replaceFile(temporary, path);
   } finally { await unlink(temporary).catch(cause => { if (cause.code !== 'ENOENT') throw cause; }); }
 }
 
