@@ -1,6 +1,6 @@
 # AL-006: Published integration regression check
 
-Status: Ready for review
+Status: Done
 Owner: Codex
 Started: 2026-11-11
 
@@ -81,6 +81,9 @@ outside Git. No version change or publication is part of this verification.
   seven changed files. Semgrep scans all three changed runtime modules with 68
   JavaScript rules and reports no findings.
 
-Hosted platform checks accompany the PR.
-Live vendor calls were not rerun. The published beta still contains the Windows
-replacement defect; this patch is for review and has not been published.
+All six [hosted platform jobs](https://github.com/prplkane/agentlink/actions/runs/42951503892)
+passed: Windows 101 passed with zero skips; Linux/macOS 93 passed with eight
+Windows-only skips. [PR 3](https://github.com/prplkane/agentlink/pull/3) merged as
+`a004648`, with the same tested tree. Live vendor calls were not rerun.
+At the regression handoff, the published beta still contained the defect.
+The authorized follow-up release is tracked in [AL-007](AL-007-fixed-beta-release.md).

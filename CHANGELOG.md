@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0-beta.2 — 2026-11-11
 
 - Retry transient Windows file-sharing conflicts during atomic profile and
   bridge metadata replacement, including profile rollback. Persistent failures
