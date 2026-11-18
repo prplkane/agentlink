@@ -2,7 +2,7 @@
   "name": "@prplkane/agentlink",
   "version": "0.3.0-beta.2",
   "type": "module",
-  "description": "Lightweight standard ACP gateway with centrally managed bridges and local discovery",
+  "description": "Connect ACP clients to agent CLIs through named profiles and centrally managed bridges.",
   "exports": {
     ".": "./src/index.mjs",
     "./client": "./src/client.mjs"
