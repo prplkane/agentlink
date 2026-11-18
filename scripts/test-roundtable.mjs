@@ -5,11 +5,12 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
-import { mkdtemp, mkdir, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { AgentLink } from '../src/index.mjs';
+import { runNpm } from '../test/support.mjs';
 
 if (!process.argv[2]) throw new Error('Usage: node scripts/test-roundtable.mjs /absolute/path/to/roundtable');
 const roundtable = resolve(process.argv[2]);
@@ -128,6 +129,28 @@ test('Roundtable uses centrally managed AgentLink bridges over standard ACP', { 
   }
   await t.test('a full review streams two rounds and a ready chairman verdict through the real gateway', async () => {
     firstLaunch = await review();
+  });
+  await t.test('an ACP seat finds the npm-installed AgentLink launcher without an override', async () => {
+    const prefix = join(root, 'npm prefix');
+    const npmFlags = ['--offline', '--ignore-scripts', '--cache', join(root, 'npm-cache')];
+    const packageDir = resolve(dirname(cli), '..');
+    const packed = await runNpm(['pack', packageDir, '--json', ...npmFlags], root);
+    const archive = join(root, JSON.parse(packed.stdout)[0].filename);
+    await runNpm(['install', '--global', '--prefix', prefix, '--no-audit', '--no-fund', ...npmFlags, archive], root);
+
+    const env = { AGENTLINK_HOME: home, HOME: user, USERPROFILE: user };
+    if (process.platform === 'win32') {
+      env.Path = prefix;
+    } else {
+      env.PATH = join(prefix, 'bin');
+      // The installed launcher's /usr/bin/env shebang also needs Node on this isolated PATH.
+      await symlink(process.execPath, join(env.PATH, 'node'));
+    }
+    const { makeAcpAdapter } = await import(pathToFileURL(join(roundtable, 'src/adapters/acp.js')));
+    const reply = await makeAcpAdapter({ env })('Synthetic rollout review', null, {
+      account: 'cost', cwd: join(root, 'installed-seat'), allowLimitedIsolation: true, timeoutMs: 10000,
+    });
+    assert.match(reply.text, /^STANCE: opt-2\b/);
   });
   await t.test('a central bridge update reaches the next review without changing Roundtable configuration', async () => {
     const updated = await manager.updateBridge('offline-review', { spec: spec('2'), offline: true });

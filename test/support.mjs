@@ -99,6 +99,13 @@ export function rpcClient(home, name, { cwd, onRequest, env, launch } = {}) {
   };
 }
 
+export function runNpm(args, cwd) {
+  const windows = process.platform === 'win32';
+  const npm = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
+  return execute(windows ? process.execPath : 'npm', windows ? [npm, ...args] : args,
+    { cwd, timeout: 30000, windowsHide: true });
+}
+
 export async function npmFixture(root, version, { broken = false } = {}) {
   const path = join(root, 'package-' + version);
   await mkdir(path, { recursive: true });
@@ -106,10 +113,6 @@ export async function npmFixture(root, version, { broken = false } = {}) {
     type: 'module', bin: { 'fixture-agent': 'agent.mjs' }, files: ['agent.mjs'] }));
   const source = await readFile(fixture, 'utf8');
   await writeFile(join(path, 'agent.mjs'), '#!/usr/bin/env node\n' + (broken ? 'process.stdout.write("broken protocol\\n");\n' : source));
-  const npm = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
-  const result = await execute(process.platform === 'win32' ? process.execPath : 'npm',
-    [...(process.platform === 'win32' ? [npm] : []), 'pack', '--offline', '--ignore-scripts', '--json'], {
-    cwd: path, timeout: 30000, windowsHide: true
-  });
+  const result = await runNpm(['pack', '--offline', '--ignore-scripts', '--json'], path);
   return { kind: 'npm', package: 'agentlink-offline-fixture', version, source: join(path, JSON.parse(result.stdout)[0].filename) };
 }
