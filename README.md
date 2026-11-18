@@ -1,18 +1,14 @@
 # AgentLink
 
-A small, centrally installed **ACP gateway for agent CLIs**. Configure an agent
-once, then use its saved name from any ACP client. AgentLink manages selected
-bridges in your user account and exposes their actual capabilities through
-standard ACP.
+Connect ACP clients to agent CLIs through named profiles and centrally managed bridges.
 
-JavaScript / Node.js 22+. Zero npm runtime dependencies. Public beta
-`0.3.0-beta.2`; the API and CLI may change before a stable release.
-Offline fixtures pass on Windows, Linux and macOS with Node 22 and 24.
-[Live ACP qualification](docs/acp-qualification.md) records Codex, Claude and agy
-results through Roundtable, including the initial chairman timeout, the successful
-low-effort rerun and remaining limits.
+AgentLink saves the launch command for each profile. Any client that speaks the
+Agent Client Protocol (ACP) can use that name to open a session with the selected
+agent. The client owns the conversation, and the agent supplies its capabilities.
 
-Source repository: [prplkane/agentlink](https://github.com/prplkane/agentlink).
+Requires Node.js 22 or newer. The public beta, `0.3.0-beta.2`, has no npm runtime
+dependencies. See the [qualification results](docs/acp-qualification.md) for tested
+providers, platforms and known limits.
 
 ## Install and configure
 
@@ -80,10 +76,9 @@ sessions. Profiles, installed bridge versions and configuration are shared.
 Clients retain ownership of session setup, working directories, permission
 decisions, task deadlines and their own conversation history.
 
-Roundtable's ACP integration selects a saved profile for each seat and chairman.
-Its client uses ACP v1 with fresh sessions for stateless reviews. See
-[Roundtable testing](docs/laptop-testing.md#roundtable-integration) for the offline
-cross-project check and real-agent qualification steps.
+For example, Codex can coordinate a Roundtable review while each seat and the
+chairman use a saved AgentLink profile. See the [illustrated Roundtable workflow](https://github.com/prplkane/roundtable#review-in-codex-with-agentlink-seats)
+or the [cross-project testing guide](docs/laptop-testing.md#roundtable-integration).
 
 The gateway forwards JSON-RPC in both directions: initialization/version
 negotiation, capabilities, authentication, prompts, streaming, cancellation,
