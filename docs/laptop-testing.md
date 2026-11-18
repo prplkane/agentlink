@@ -118,7 +118,10 @@ node scripts/test-roundtable.mjs /absolute/path/to/roundtable
 
 It creates temporary profiles and managed fake bridges, verifies two discussion
 rounds and a ready chairman verdict, updates a bridge centrally, then checks
-cancellation and missing-usage behavior. No real user store or vendor CLI is used.
+cancellation and missing-usage behavior. It also packs the current AgentLink checkout
+and installs it offline under a temporary npm prefix. A Roundtable seat must find
+that installation on the search path and receive its selected profile's reply.
+On Windows this exercises the ordinary `Path` spelling with the launcher override unset.
 The integration script is developer tooling and is not included in the npm package.
 
 For real agents on the other laptop:
