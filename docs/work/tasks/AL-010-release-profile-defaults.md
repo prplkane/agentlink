@@ -1,6 +1,6 @@
 # AL-010 Qualify and publish central profile defaults
 
-Status: In progress
+Status: Blocked on npm owner confirmation. Global installation and GitHub publication completed.
 Owner: Codex
 Started: 2026-11-19
 
@@ -43,3 +43,24 @@ required by qualification. Keep user profiles and raw responses outside Git.
   configuration targets for dependency or misconfiguration analysis. Safe
   Chain was unavailable. Platform results and registry integrity belong to
   the release receipt.
+
+## Release receipt
+
+[PR 8](https://github.com/prplkane/agentlink/pull/8) merged at `03edf20`.
+Its tree matches the [six-job qualification](https://github.com/prplkane/agentlink/actions/runs/44572995454)
+of `a901b6a`. Both Windows jobs passed 107 tests. Each Linux and macOS job
+passed 98 tests and skipped nine Windows-only cases. The exact archive was
+also installed into an isolated offline prefix. A rejected effort change
+preserved both previously saved settings.
+
+The [GitHub prerelease](https://github.com/prplkane/agentlink/releases/tag/v0.3.0-beta.3)
+includes the qualified tarball. Its SHA-256 matches both the local candidate
+and a fresh download from npm's authenticated staging area:
+`5de2eccbe54d1acdb7f1f0dc715a3b62edefd8958659c7a80e006b013c339f98`.
+
+npm accepted the archive for public publication under the `beta` tag and
+retained it in staging. The direct publish and staged-approval browser
+challenges expired. The account owner can resume the existing stage with
+`npm stage list @prplkane/agentlink` and `npm stage approve STAGE_ID`.
+After owner confirmation, verify that the public beta tag and tarball integrity
+match the qualified release.

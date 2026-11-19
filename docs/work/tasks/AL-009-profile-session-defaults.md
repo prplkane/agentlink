@@ -1,6 +1,6 @@
 # AL-009 Central model and effort selection
 
-Status: Ready for review
+Status: Done
 Owner: Codex
 Started: 2026-11-19
 
@@ -40,3 +40,7 @@ integration and repository checks.
 - Qualification used synthetic homes and fake agents. Live vendor accounts
   and other operating systems were outside this run. The global installation
   and registry were not modified.
+
+The feature merged in [PR 8](https://github.com/prplkane/agentlink/pull/8).
+The [release qualification](AL-010-release-profile-defaults.md) records the
+subsequent global installation, live provider checks and platform results.
