@@ -1,6 +1,6 @@
 # AL-010 Qualify and publish central profile defaults
 
-Status: Blocked on npm owner confirmation. Global installation and GitHub publication completed.
+Status: Done
 Owner: Codex
 Started: 2026-11-19
 
@@ -53,14 +53,10 @@ passed 98 tests and skipped nine Windows-only cases. The exact archive was
 also installed into an isolated offline prefix. A rejected effort change
 preserved both previously saved settings.
 
-The [GitHub prerelease](https://github.com/prplkane/agentlink/releases/tag/v0.3.0-beta.3)
-includes the qualified tarball. Its SHA-256 matches both the local candidate
-and a fresh download from npm's authenticated staging area:
-`5de2eccbe54d1acdb7f1f0dc715a3b62edefd8958659c7a80e006b013c339f98`.
-
-npm accepted the archive for public publication under the `beta` tag and
-retained it in staging. The direct publish and staged-approval browser
-challenges expired. The account owner can resume the existing stage with
-`npm stage list @prplkane/agentlink` and `npm stage approve STAGE_ID`.
-After owner confirmation, verify that the public beta tag and tarball integrity
-match the qualified release.
+The public npm `beta` tag resolved to `0.3.0-beta.3` after publisher
+confirmation. The downloaded tarball matched npm's SHA-512 integrity value.
+Its SHA-256 matched the qualified local archive and the GitHub release asset
+(`5de2eccbe54d1acdb7f1f0dc715a3b62edefd8958659c7a80e006b013c339f98`).
+All 33 files in the public package matched the global installation byte for
+byte. [npm package](https://www.npmjs.com/package/@prplkane/agentlink/v/0.3.0-beta.3)
+· [GitHub prerelease](https://github.com/prplkane/agentlink/releases/tag/v0.3.0-beta.3)
