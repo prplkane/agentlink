@@ -8,6 +8,14 @@ export const error = (code, message) => Object.assign(new Error(message), { code
 export const strings = value => Array.isArray(value) && value.every(item => typeof item === 'string' && !item.includes('\0'));
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
+export function validateDefaults(value) {
+  if (!object(value) || Object.entries(value).some(([key, id]) =>
+    !['model', 'effort'].includes(key) || typeof id !== 'string' || !id.length || /[\u0000-\u001f\u007f]/.test(id))) {
+    throw error('INVALID_PROFILE', 'Session defaults must contain model or effort IDs as nonempty strings without control characters.');
+  }
+  return value;
+}
+
 export function profileName(name) {
   if (typeof name !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(name) ||
       /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/.test(name)) {
@@ -30,6 +38,7 @@ export function validateProfile(profile) {
     if (!object(profile.bridge) || typeof profile.bridge.useDefaultArgs !== 'boolean') throw error('INVALID_PROFILE', 'Invalid managed bridge reference.');
     profileName(profile.bridge.id);
   }
+  if (profile.defaults !== undefined) validateDefaults(profile.defaults);
   if (profile.env !== undefined && (!object(profile.env) || Object.entries(profile.env).some(([key, value]) =>
     !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || typeof value !== 'string' || value.includes('\0')))) {
     throw error('INVALID_PROFILE', 'Invalid launch environment.');

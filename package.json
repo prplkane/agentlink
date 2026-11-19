@@ -1,6 +1,6 @@
 {
   "name": "@prplkane/agentlink",
-  "version": "0.3.0-beta.2",
+  "version": "0.3.0-beta.3",
   "type": "module",
   "description": "Connect ACP clients to agent CLIs through named profiles and centrally managed bridges.",
   "exports": {
@@ -22,6 +22,7 @@
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
+    "test:maturity": "node --test scripts/test-maturity.mjs",
     "check:repo": "node scripts/check-repository.mjs"
   },
   "engines": {

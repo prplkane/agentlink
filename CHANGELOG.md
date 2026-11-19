@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0-beta.3 — 2026-11-19
+
+- Inspect model and effort choices from an existing ACP profile and save
+  shared defaults. New sessions inherit edits across projects, including
+  sessions created on an open gateway connection.
+- Retry transient Windows sharing errors when acquiring and releasing operation
+  locks. A persistent denial retains the operating system error.
+
 ## 0.3.0-beta.2 — 2026-11-11
 
 - Retry transient Windows file-sharing conflicts during atomic profile and

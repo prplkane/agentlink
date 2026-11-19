@@ -1,8 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { open, readdir } from 'node:fs/promises';
+import fsPromises from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+import { join } from 'node:path';
+import { withLock } from '../src/storage.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { setup } from './support.mjs';
+
+test('Windows lease acquisition survives a transient EPERM and reports persistent denial', { skip: process.platform !== 'win32' }, async t => {
+  const c = await setup(t);
+  const path = join(c.home, 'leases.lock');
+  const realOpen = fsPromises.open;
+  let denials = 2, entered = 0;
+  const mock = t.mock.method(fsPromises, 'open', async (file, flags, ...args) => {
+    if (file === path && flags === 'wx' && denials-- > 0) {
+      throw Object.assign(new Error('Synthetic Windows sharing conflict'), { code: 'EPERM' });
+    }
+    return realOpen(file, flags, ...args);
+  });
+  syncBuiltinESMExports();
+  try {
+    await withLock(path, () => { entered++; });
+    assert.equal(entered, 1);
+    denials = Infinity;
+    await assert.rejects(withLock(path, () => { entered++; }, 100), { code: 'EPERM' });
+    assert.equal(entered, 1);
+    assert.deepEqual(await readdir(c.home), []);
+  } finally { mock.mock.restore(); syncBuiltinESMExports(); }
+});
 
 async function records(t, kind) {
   const c = await setup(t), name = 'shared';

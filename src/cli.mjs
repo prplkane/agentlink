@@ -27,7 +27,16 @@ try {
     const runtime = new AgentRuntime({ ...(gateway.home ? { home: gateway.home } : {}), signal: abort.signal });
     const { launch, release } = await runtime.acquire(gateway.name);
     try {
-      process.exitCode = (await runGateway(launch, { extraArgs: gateway.extraArgs, signal: abort.signal })).exitCode;
+      // A connection keeps its bridge lease, but new sessions can inherit a
+      // later preference edit. An explicitly removed profile keeps its last
+      // observed settings for the lifetime of this connection.
+      let defaults = launch.defaults;
+      const readDefaults = async () => {
+        try { defaults = (await runtime.get(gateway.name)).defaults; }
+        catch (cause) { if (cause.code !== 'PROFILE_NOT_FOUND') throw cause; }
+        return defaults;
+      };
+      process.exitCode = (await runGateway(launch, { readDefaults, extraArgs: gateway.extraArgs, signal: abort.signal })).exitCode;
     } finally { await release(); }
   } else {
     await (await import('./management-cli.mjs')).runManagement(process.argv.slice(2), { signal: abort.signal, cliURL: import.meta.url });

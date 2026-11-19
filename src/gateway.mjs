@@ -9,7 +9,7 @@ import { authMarker, terminalAuthReply } from './terminal-auth.mjs';
 // No initialize, session/new, task, approval, download or discovery is injected.
 export async function runGateway(launch, { cwd = process.cwd(), env = process.env,
   input = process.stdin, output = process.stdout, diagnostics = process.stderr,
-  signal, extraArgs = [], interactive = Boolean(process.stdin.isTTY),
+  signal, readDefaults, extraArgs = [], interactive = Boolean(process.stdin.isTTY),
   maxMessageBytes = 16 * 1024 * 1024, shutdownGraceMs = 750 } = {}) {
   if (!strings(extraArgs) || !Number.isSafeInteger(shutdownGraceMs) || shutdownGraceMs < 1) {
     throw new TypeError('Invalid gateway arguments.');
@@ -43,8 +43,19 @@ export async function runGateway(launch, { cwd = process.cwd(), env = process.en
   let inputPump = Promise.resolve();
   let outputFrames;
   if (!terminal) {
+    let defaultsRelay, protocolVersion;
+    async function prepareSession(message, source) {
+      const defaults = readDefaults ? await readDefaults() : launch.defaults;
+      if (!defaults || !Object.keys(defaults).length) return;
+      if (!defaultsRelay) {
+        const { SessionDefaults } = await import('./session-defaults.mjs');
+        defaultsRelay = new SessionDefaults(frame => child.stdin.write(frame), maxMessageBytes);
+      }
+      defaultsRelay.expectSession(message, source, defaults, protocolVersion);
+    }
     const initializeIds = new Set();
-    inputPump = pipeline(input, new AcpFrames({ maxMessageBytes, onMessage(message) {
+    inputPump = pipeline(input, new AcpFrames({ maxMessageBytes, onMessage(message, source) {
+      if (message.method === 'session/new' && Object.hasOwn(message, 'id')) return prepareSession(message, source);
       if (message.method === 'initialize' && Object.hasOwn(message, 'id')) initializeIds.add(message.id);
     } }), child.stdin, { signal: pumps.signal }).then(() => {
       if (!closing) inputTimer = setTimeout(() => { void stop(); }, shutdownGraceMs);
@@ -57,7 +68,9 @@ export async function runGateway(launch, { cwd = process.cwd(), env = process.en
       } else fail(cause);
     });
     outputFrames = new AcpFrames({ maxMessageBytes, mapMessage(message, source) {
-      if (message.method || !initializeIds.delete(message.id) || !Array.isArray(message.result?.authMethods)) return;
+      if (message.method || !initializeIds.delete(message.id)) return defaultsRelay?.agentMessage(message, source);
+      protocolVersion = message.result?.protocolVersion;
+      if (!Array.isArray(message.result?.authMethods)) return;
       // The client relaunches AgentLink, not the underlying executable. A marker
       // identifies terminal auth even when the upstream method has only env.
       return terminalAuthReply(message, source);
