@@ -6,7 +6,7 @@ AgentLink saves the launch command for each profile. Any client that speaks the
 Agent Client Protocol (ACP) can use that name to open a session with the selected
 agent. The client owns the conversation, and the agent supplies its capabilities.
 
-Requires Node.js 22 or newer. The public beta, `0.3.0-beta.2`, has no npm runtime
+Requires Node.js 22 or newer. The public beta, `0.3.0-beta.3`, has no npm runtime
 dependencies. See the [qualification results](docs/acp-qualification.md) for tested
 providers, platforms and known limits.
 
@@ -96,6 +96,39 @@ They never install, update, discover, or send a test prompt.
 The ACP entry point loads only the runtime modules. Installation, discovery and
 the compatibility client load only for management commands. External profiles
 do not need the installation lease lock; managed profiles briefly acquire it.
+
+## Choose a model and effort once for a profile
+
+Use the provider profile your projects already launch. Inspect the bridge's
+live choices, then replace the example IDs below with values from the output.
+
+~~~sh
+agentlink models agy
+agentlink models agy --model MODEL_ID
+agentlink defaults agy --model MODEL_ID --effort EFFORT_ID
+agentlink defaults agy
+agentlink defaults agy --clear-model --clear-effort
+~~~
+
+`models` opens a temporary session with the profile's launch settings and an
+empty working directory. It sends no prompt. The JSON shows the saved defaults,
+the bridge's current model and effort, and each advertised choice's ID and
+name. Use `--model` to preview the effort levels for a particular model.
+An unavailable selector appears as `null`. Inspection ignores saved pins so it
+can show replacements after a vendor retires a model.
+
+`defaults` with no flags shows the saved choices. Setting a model or effort
+validates the resulting pair in a temporary session before saving it. An
+omitted flag keeps its previous setting. Use `--clear-effort` alongside a
+model change to follow that model's own reasoning default. Clearing both
+returns to vendor defaults and works offline.
+
+All ACP clients launching that profile inherit the choices on their next
+`session/new`, including on an open connection. Running and resumed sessions
+keep their settings. A client may explicitly override a choice for its session.
+If a saved ID disappears, session creation reports the unavailable choice so
+you can replace it once for every project. Bridge updates still check ACP
+initialization. Actual model and effort support is checked in the session.
 
 ## Discover an unfamiliar agent
 
@@ -254,12 +287,16 @@ compatibility; use `check PROFILE` for initialization.
 
 ~~~sh
 npm test
+npm run test:maturity
 npm pack
 ~~~
 
 Tests use local fixture agents and locally produced npm packages, wheels and
 binary archives. They cover independent ACP clients, shared updates, rollback,
 leases/pruning, discovery, authentication forwarding and process cleanup.
+The separate maturity check starts 50 batches of eight managed clients with
+synthetic profiles, checks model and effort inheritance on every prompt, and
+verifies lease cleanup after each batch.
 Python installation coverage runs when Python is available. No vendor account
 or paid model call is needed.
 A GitHub Actions workflow is included for Windows/Linux/macOS with Node 22/24

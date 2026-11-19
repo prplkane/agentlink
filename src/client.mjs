@@ -1,6 +1,7 @@
 import { version } from './version.mjs';
 import { spawn } from 'node:child_process';
 import { isAbsolute, join } from 'node:path';
+import { sessionSelections } from './session-options.mjs';
 export { providers, planProvider } from './providers.mjs';
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -92,7 +93,7 @@ export class AcpClient {
     finally { this.#setupMethod = undefined; }
   }
 
-  async newSession(options) {
+  async newSession(options, defaults) {
     if (!this.#initialized || this.#sessionId || this.#setupMethod) throw fault('INVALID_STATE', 'Initialize before creating one session.');
     this.#setupMethod = 'session/new';
     let result;
@@ -102,6 +103,15 @@ export class AcpClient {
       const error = fault('PROTOCOL_ERROR', 'Missing session ID.'); this.#fail(error); throw error;
     }
     this.#sessionId = result.sessionId;
+    if (defaults) {
+      const selections = sessionSelections(result.configOptions, defaults);
+      let step = selections.next();
+      while (!step.done) {
+        const reply = await this.#request('session/set_config_option', { sessionId: this.#sessionId, ...step.value }, options);
+        step = selections.next(reply?.configOptions);
+      }
+      result.configOptions = step.value;
+    }
     return result;
   }
 

@@ -2,7 +2,7 @@ import { mkdir, open, readFile, stat, unlink } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { error } from './profiles.mjs';
-import { replaceFile } from './replace-file.mjs';
+import { replaceFile, retryWindowsSharing } from './replace-file.mjs';
 
 export function inside(root, path) {
   const target = resolve(root, path);
@@ -38,7 +38,7 @@ export async function withLock(path, callback, timeoutMs = 180000, signal) {
   let handle;
   while (!handle) {
     signal?.throwIfAborted();
-    try { handle = await open(path, 'wx', 0o600); }
+    try { handle = await retryWindowsSharing(() => open(path, 'wx', 0o600), deadline, signal); }
     catch (cause) {
       if (cause.code !== 'EEXIST') throw cause;
       try {
@@ -59,5 +59,5 @@ export async function withLock(path, callback, timeoutMs = 180000, signal) {
     await handle.writeFile(JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString() }));
     signal?.throwIfAborted();
     return await callback();
-  } finally { await handle.close(); await unlink(path); }
+  } finally { await handle.close(); await retryWindowsSharing(() => unlink(path)); }
 }

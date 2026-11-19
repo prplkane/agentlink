@@ -8,6 +8,7 @@ record({ launch: args, pid: process.pid, cwd: process.cwd() });
 let version = '1.0.0';
 try { version = JSON.parse(readFileSync(new URL('./package.json', import.meta.url))).version; } catch {}
 const mode = process.env.FIXTURE_MODE || 'normal';
+const offersModels = ['session-options', 'retired-model', 'ignore-selection'].includes(mode);
 if (args.includes('--login') || process.env.FIXTURE_LOGIN === 'env-only') {
   console.log(JSON.stringify({ login: args, env: process.env.FIXTURE_LOGIN }));
   process.exit(0);
@@ -24,6 +25,18 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
 } else {
   const send = value => process.stdout.write(JSON.stringify(value) + '\n');
   const sessions = new Map(), waiting = new Map();
+  let protocolVersion;
+  function configOptions(session) {
+    const idField = protocolVersion === 2 ? 'configId' : 'id';
+    const values = ids => ids.map(value => ({ value, name: value }));
+    const models = mode === 'retired-model' ? ['standard', 'new-model'] : ['standard', 'swift'];
+    const efforts = session.model === 'swift' ? ['low', 'deep'] : ['low', 'medium'];
+    return [
+      { [idField]: 'engine', type: 'select', category: 'model', currentValue: session.model,
+        options: [{ group: 'available', name: 'Available', options: values(models) }] },
+      { [idField]: 'depth', type: 'select', category: 'thought_level', currentValue: session.effort, options: values(efforts) }
+    ];
+  }
   let nextSession = 0;
   const reader = createInterface({ input: process.stdin });
   reader.on('line', line => {
@@ -31,6 +44,7 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
     record({ rpc: message });
     const reply = result => send({ jsonrpc: '2.0', id: message.id, result });
     if (message.method === 'initialize') {
+      protocolVersion = message.params.protocolVersion;
       const v2 = message.params.protocolVersion === 2;
       if (mode === 'strict-init' && (v2 ? !message.params.info : !message.params.clientInfo)) {
         return send({ jsonrpc: '2.0', id: message.id, error: { code: -32602, message: 'Missing implementation info' } });
@@ -46,9 +60,26 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
     }
     else if (message.method === 'session/new') {
       const sessionId = 'session-' + ++nextSession;
+      if (offersModels) {
+        const session = { ...message.params, model: 'standard', effort: 'low' };
+        sessions.set(sessionId, session);
+        return reply({ sessionId, configOptions: configOptions(session), _meta: { fixture: 'retained' } });
+      }
       sessions.set(sessionId, message.params);
       reply({ sessionId, configOptions: [{ id: 'fixture-style', name: 'Style', type: 'select',
         currentValue: 'plain', options: [{ value: 'plain', name: 'Plain' }] }] });
+    } else if (offersModels && message.method === 'session/set_config_option') {
+      const { sessionId, configId, value } = message.params;
+      if (protocolVersion === 2 && message.params.type !== 'id') {
+        return send({ jsonrpc: '2.0', id: message.id, error: { code: -32602, message: 'Missing v2 select value type' } });
+      }
+      const session = sessions.get(sessionId);
+      if (configId === 'engine' && mode !== 'ignore-selection') { session.model = value; session.effort = 'low'; }
+      if (configId === 'depth') session.effort = value;
+      const options = configOptions(session);
+      send({ jsonrpc: '2.0', method: 'session/update', params: { sessionId,
+        update: { sessionUpdate: 'config_option_update', configOptions: options } } });
+      return reply({ configOptions: options });
     } else if (message.method === 'session/prompt') {
       const text = message.params.prompt[0].text;
       const sessionId = message.params.sessionId;
@@ -70,7 +101,8 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
       } else {
         send({ jsonrpc: '2.0', method: 'session/update', params: { sessionId,
           update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } }, _meta: { opaque: true } } });
-        reply({ stopReason: 'end_turn', version, cwd: sessions.get(sessionId)?.cwd, text });
+        const session = sessions.get(sessionId);
+        reply({ stopReason: 'end_turn', version, cwd: session?.cwd, model: session?.model, effort: session?.effort, text });
       }
     } else if (message.method === 'session/cancel') {
       const id = waiting.get(message.params.sessionId);

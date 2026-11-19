@@ -1,7 +1,8 @@
 import { join } from 'node:path';
 import { AcpClient } from './client.mjs';
 import { discoverAgent, validateDiscoveryOptions, inProbeDirectory, verifyAgent } from './discovery.mjs';
-import { profileName, error } from './profiles.mjs';
+import { profileName, error, validateDefaults } from './profiles.mjs';
+import { probeAcp } from './probe.mjs';
 import { AgentRuntime } from './runtime.mjs';
 import { BridgeStore, environment, manifestSpec } from './bridges.mjs';
 import { withLock } from './storage.mjs';
@@ -21,6 +22,36 @@ export class AgentLink extends AgentRuntime {
   mutate(callback) { return withLock(join(this.home, 'management.lock'), callback, 180000, this.signal); }
   remove(name) { return this.mutate(() => this.store.remove(name)); }
   inspect(options) { return discoverAgent(options); } // Never installs or saves.
+
+  async models(name, { model, timeoutMs = 15000, signal = this.signal } = {}) {
+    const defaults = validateDefaults(model === undefined ? {} : { model });
+    const { launch, release } = await this.acquire(name);
+    try {
+      const options = await inProbeDirectory(cwd => probeAcp(launch, { cwd, defaults, timeoutMs, signal }));
+      return { name, defaults: launch.defaults ?? {}, ...options };
+    } finally { await release(); }
+  }
+
+  async setDefaults(name, changes, { timeoutMs = 15000, signal = this.signal } = {}) {
+    return this.mutate(async () => {
+      const profile = await this.get(name);
+      const defaults = { ...profile.defaults };
+      for (const [key, value] of Object.entries(changes)) {
+        if (!['model', 'effort'].includes(key)) throw new TypeError('Unknown session default.');
+        if (value === null) delete defaults[key];
+        else defaults[key] = value;
+      }
+      validateDefaults(defaults);
+      if (Object.keys(defaults).length) {
+        const launch = await this.resolveProfile(profile);
+        await inProbeDirectory(cwd => probeAcp(launch, { cwd, defaults, timeoutMs, signal }));
+      }
+      profile.defaults = defaults;
+      if (!Object.keys(defaults).length) delete profile.defaults;
+      await this.store.save({ ...profile, updatedAt: new Date().toISOString() }, { replace: true });
+      return { name, defaults };
+    });
+  }
 
   async installBridge(id, spec, options = {}) {
     return this.mutate(() => this.installBridgeUnlocked(id, spec, options));
@@ -222,7 +253,7 @@ export class AgentLink extends AgentRuntime {
       client.close = async () => { try { await close(); } finally { await release(); } };
       await client.initialize({ timeoutMs });
       if (authMethodId !== undefined) await client.authenticate(authMethodId, { timeoutMs });
-      await client.newSession({ timeoutMs });
+      await client.newSession({ timeoutMs }, launch.defaults);
       return client;
     } catch (cause) { if (client) await client.close(); else await release(); throw cause; }
   }

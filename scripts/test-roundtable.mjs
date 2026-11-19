@@ -157,6 +157,19 @@ test('Roundtable uses centrally managed AgentLink bridges over standard ACP', { 
     assert.notEqual(updated.installKey, original.installKey);
     assert.notEqual(await review(), firstLaunch);
   });
+  await t.test('the seat and chairman inherit a central model change with the same review request', async () => {
+    await manager.setDefaults('risk', { model: 'fake-choice' });
+    const offset = (await wireEvents()).length;
+    await review();
+    const calls = (await wireEvents()).slice(offset);
+    const selections = calls.filter(e => e.rpc?.method === 'session/set_config_option');
+    assert.equal(selections.length, 3, 'two risk seat turns and its chairman');
+    for (const event of selections) {
+      assert.equal(event.rpc.params.value, 'fake-choice');
+      assert.ok(calls.slice(calls.indexOf(event) + 1).some(e => e.pid === event.pid && e.rpc?.method === 'session/prompt'));
+    }
+    await manager.setDefaults('risk', { model: null });
+  });
   await t.test('Stop cancels the live ACP seats without starting a chairman', async () => {
     const offset = (await wireEvents()).length;
     const waiting = { ...body, seats: body.seats.map((s) => ({ ...s, account: 'waiting' })) };

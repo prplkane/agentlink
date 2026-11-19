@@ -13,6 +13,8 @@ const usage = 'AgentLink — shared ACP connections and centrally managed bridge
   '  agentlink inspect --command <installed-cli>\n' +
   '  agentlink update <profile> [launch options]\n' +
   '  agentlink refresh <profile> | check <profile>\n' +
+  '  agentlink models <profile> [--model ID]   Inspect live model and effort choices\n' +
+  '  agentlink defaults <profile> [--model ID | --clear-model] [--effort ID | --clear-effort]\n' +
   '  agentlink doctor                       Read-only local health checks\n' +
   '  agentlink list | show <profile> | config <profile> | remove <profile> | providers | where\n\n' +
   '  agentlink bridge install <id> --package <npm-package> [--version <version-or-tag>]\n' +
@@ -66,6 +68,7 @@ export async function runManagement(argv, { signal, cliURL } = {}) {
       kind: { type: 'string' }, manifest: { type: 'string' }, distribution: { type: 'string' },
       offline: { type: 'boolean' }, cache: { type: 'boolean' }, 'install-timeout': { type: 'string' },
       timeout: { type: 'string' }, home: { type: 'string' }, json: { type: 'boolean' },
+      model: { type: 'string' }, effort: { type: 'string' }, 'clear-model': { type: 'boolean' }, 'clear-effort': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' }
     } });
     json = Boolean(v.json);
@@ -79,6 +82,7 @@ export async function runManagement(argv, { signal, cliURL } = {}) {
         add: [...launchFlags, ...installFlags], update: [...launchFlags, ...installFlags],
         inspect: ['command', 'provider', 'prefix-args', 'acp-args', 'help-args', 'skip-check'],
         refresh: [], check: [], list: [], show: [], config: [], remove: [], providers: [], where: [], doctor: [],
+        models: ['model'], defaults: ['model', 'effort', 'clear-model', 'clear-effort'],
         bridge: [...installFlags, 'acp-args', 'env', 'cache']
       };
       if (!Object.hasOwn(allowed, action)) throw new TypeError('Unknown command. Run agentlink --help.');
@@ -123,7 +127,7 @@ export async function runManagement(argv, { signal, cliURL } = {}) {
         else if (operation === 'prune') result = await manager.pruneBridges({ cache: Boolean(v.cache) });
         else { await manager.removeBridge(id); result = { removed: id, note: 'Unused files can be removed with bridge prune.' }; }
       } else {
-        const named = ['add', 'update', 'refresh', 'check', 'show', 'config', 'remove'].includes(action);
+        const named = ['add', 'update', 'refresh', 'check', 'show', 'config', 'remove', 'models', 'defaults'].includes(action);
         if (second !== undefined || rest.length || (named ? !first : first !== undefined)) throw new TypeError('Invalid arguments for ' + action + '.');
         switch (action) {
           case 'add': result = await manager.add(first, options); break;
@@ -131,6 +135,18 @@ export async function runManagement(argv, { signal, cliURL } = {}) {
           case 'inspect': result = await manager.inspect(options); break;
           case 'refresh': result = await manager.refresh(first, options); break;
           case 'check': result = { name: first, verification: await manager.check(first, options) }; break;
+          case 'models': result = await manager.models(first, { ...options, model: v.model }); break;
+          case 'defaults': {
+            const changes = {};
+            for (const key of ['model', 'effort']) {
+              if (v['clear-' + key] && v[key] !== undefined) throw new TypeError('Choose --' + key + ' or --clear-' + key + '.');
+              if (v['clear-' + key]) changes[key] = null;
+              else if (v[key] !== undefined) changes[key] = v[key];
+            }
+            result = Object.keys(changes).length ? await manager.setDefaults(first, changes, options)
+              : { name: first, defaults: (await manager.get(first)).defaults ?? {} };
+            break;
+          }
           case 'show': {
             const profile = await manager.get(first);
             result = { ...profile, resolvedLaunch: await manager.resolveProfile(profile) }; break;
@@ -146,7 +162,7 @@ export async function runManagement(argv, { signal, cliURL } = {}) {
           case 'doctor': result = await doctor(manager); if (!result.ok) process.exitCode = 1; break;
         }
       }
-      if (json || action === 'bridge' || ['show', 'config', 'inspect', 'providers'].includes(action)) process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      if (json || action === 'bridge' || ['show', 'config', 'inspect', 'providers', 'models', 'defaults'].includes(action)) process.stdout.write(JSON.stringify(result, null, 2) + '\n');
       else if (action === 'list') process.stdout.write(result.length ? result.map(profile =>
         profile.name + '\t' + (profile.error ? profile.error.message : profile.verification.status + '\t' +
           (profile.bridge ? 'managed:' + profile.bridge.id : profile.command))).join('\n') + '\n' : 'No saved profiles.\n');

@@ -27,13 +27,30 @@ methods. Backpressure follows Node streams. It does not initialize or create a
 session on the application's behalf, approve tools, retry a prompt, or record
 conversation content.
 
-The exception to byte-preserving forwarding is an initialize response containing
+One exception to byte-preserving forwarding is an initialize response containing
 terminal authentication methods. Their argv receives an AgentLink marker so a
 client's subsequent standard interactive relaunch is recognized even if the
 upstream method only supplies environment variables. The launcher strips that
 marker and appends the original arguments to the original bridge invocation.
 Only the affected argument spans are rewritten. Large numeric IDs, numeric
 extensions, unrelated fields and whitespace retain their original JSON bytes.
+
+On each new session the gateway reads the profile's optional model and effort
+defaults. With pins present, it waits for the bridge's session options and
+uses standard ACP setters to apply the model, then the effort advertised for
+that model. It returns the confirmed options to the client before the first
+prompt. A rejected or unconfirmed choice fails that session creation. Future
+sessions on the same connection read later edits. Existing sessions, resume
+operations and explicit client setters pass through. The connection keeps
+its original bridge lease throughout.
+
+Each configured creation keeps its own outstanding request ID. The gateway
+reuses that ID upstream after the bridge's creation response and holds the
+downstream response until configuration finishes. It replaces only the JSON
+span for the options. Session notifications received during this exchange
+follow the creation reply. Intermediate configuration notifications are
+superseded by the setter's complete option list. Pending setup and buffered
+notifications have per-connection limits.
 
 The connection owns one bridge process. On client EOF it allows a short exit
 grace, then stops the process tree where the host supports it. Existing ACP
@@ -80,6 +97,9 @@ survive a machine restart when its owning process cannot survive either.
 On Windows, atomic replacement retries file-sharing conflicts up to five times
 with at most 750 ms of retry delay. A persistent failure leaves the old file in
 place and reports the error; replacement never deletes the destination first.
+Lock acquisition and cleanup also retry short-lived Windows sharing errors.
+An acquisition respects the remaining lock deadline and cancellation. A
+persistent access error reports its original operating system code.
 
 No automatic deletion of previous versions occurs during an update. Users can
 prune after sessions finish and optionally clear the download cache. External
@@ -115,10 +135,11 @@ the profile instead of dropping its options and activating a different launch.
 |---|---|
 | `cli.mjs`, `runtime.mjs` | Small ACP launch entry, saved records and live-process leases |
 | `management-cli.mjs`, `doctor.mjs` | Management commands and read-only local diagnostics |
-| `gateway.mjs`, `wire.mjs`, `terminal-auth.mjs` | ACP forwarding, framing, backpressure and lossless auth argument edits |
+| `gateway.mjs`, `wire.mjs`, `terminal-auth.mjs`, `json-spans.mjs` | ACP forwarding, framing, backpressure and lossless JSON edits |
+| `session-defaults.mjs`, `session-options.mjs` | Per-session defaults and bridge-advertised model and effort choices |
 | `profiles.mjs`, `storage.mjs` | User profiles, atomic records and operation locks |
 | `bridges.mjs`, `artifacts.mjs` | Selected distributions, shared installations, integrity and bounded extraction |
-| `discovery.mjs`, `probe.mjs` | Help/metadata matching and initialization-only checks |
+| `discovery.mjs`, `probe.mjs` | Help/metadata matching, initialization checks and explicit option inspection |
 | `process.mjs`, `child-process.mjs` | Executable resolution, bounded probes/installers and shared process cleanup |
 | `providers.mjs` | Small documented launch/install recipes |
 | `index.mjs` | Management coordination and compatibility library exports |
