@@ -119,6 +119,7 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
   });
   reader.on('close', () => {
     if (mode === 'ignore-eof') setInterval(() => {}, 1000);
+    else if (mode === 'slow-exit') setTimeout(() => process.stderr.write('Bridge cleanup complete\n'), 2000);
     else process.exit(0);
   });
 }

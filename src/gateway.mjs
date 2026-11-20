@@ -10,10 +10,13 @@ import { authMarker, terminalAuthReply } from './terminal-auth.mjs';
 export async function runGateway(launch, { cwd = process.cwd(), env = process.env,
   input = process.stdin, output = process.stdout, diagnostics = process.stderr,
   signal, readDefaults, extraArgs = [], interactive = Boolean(process.stdin.isTTY),
-  maxMessageBytes = 16 * 1024 * 1024, shutdownGraceMs = 750 } = {}) {
-  if (!strings(extraArgs) || !Number.isSafeInteger(shutdownGraceMs) || shutdownGraceMs < 1) {
+  maxMessageBytes = 16 * 1024 * 1024, shutdownGraceMs } = {}) {
+  if (!strings(extraArgs) || (shutdownGraceMs !== undefined && (!Number.isSafeInteger(shutdownGraceMs) || shutdownGraceMs < 1))) {
     throw new TypeError('Invalid gateway arguments.');
   }
+  // A healthy bridge can spend several seconds cleaning up after EOF.
+  const eofGraceMs = shutdownGraceMs ?? 5000;
+  const pipeGraceMs = shutdownGraceMs ?? 750;
   signal?.throwIfAborted();
   // ACP terminal-auth methods append argv to the configured launch command.
   // Append those bytes to the bridge's base argv, not to management option parsing.
@@ -58,13 +61,15 @@ export async function runGateway(launch, { cwd = process.cwd(), env = process.en
       if (message.method === 'session/new' && Object.hasOwn(message, 'id')) return prepareSession(message, source);
       if (message.method === 'initialize' && Object.hasOwn(message, 'id')) initializeIds.add(message.id);
     } }), child.stdin, { signal: pumps.signal }).then(() => {
-      if (!closing) inputTimer = setTimeout(() => { void stop(); }, shutdownGraceMs);
+      if (!closing && child.exitCode === null && child.signalCode === null) {
+        inputTimer = setTimeout(() => { void stop(); }, eofGraceMs);
+      }
     }, cause => {
       if (closing) return;
       // A normally exiting bridge can close its stdin before the exit event.
       // Give it time to finish and drain stdout instead of destroying its reply.
       if (['EPIPE', 'ERR_STREAM_PREMATURE_CLOSE', 'ERR_STREAM_DESTROYED'].includes(cause.code)) {
-        if (child.exitCode === null && child.signalCode === null) inputTimer = setTimeout(() => fail(cause), shutdownGraceMs);
+        if (child.exitCode === null && child.signalCode === null) inputTimer = setTimeout(() => fail(cause), pipeGraceMs);
       } else fail(cause);
     });
     outputFrames = new AcpFrames({ maxMessageBytes, mapMessage(message, source) {
@@ -94,13 +99,13 @@ export async function runGateway(launch, { cwd = process.cwd(), env = process.en
         if (done) return;
         if (!failure && !output.destroyed && (output.writableLength || output.writableNeedDrain || child.stdout?.readableLength ||
             outputFrames?.readableLength || outputFrames?.writableLength)) {
-          flushTimer = setTimeout(idle, shutdownGraceMs);
+          flushTimer = setTimeout(idle, pipeGraceMs);
         } else finish();
       };
       // end:false leaves the caller's stream open and may resolve before its
       // final write callback; also wait for that queued output to drain.
       outputPump.then(() => { if (failure || !output.writableLength || output.destroyed) finish(); });
-      flushTimer = setTimeout(idle, shutdownGraceMs);
+      flushTimer = setTimeout(idle, pipeGraceMs);
     });
     if (failure) throw failure;
     return { exitCode };

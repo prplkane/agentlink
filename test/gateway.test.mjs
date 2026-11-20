@@ -153,13 +153,29 @@ test('crashes and malformed output fail promptly without corrupting protocol std
   }
 });
 
+test('client EOF lets a slow bridge finish cleanup, exit successfully and release its lease', async t => {
+  const c = await setup(t);
+  await c.manager.add('managed', { spec: { kind: 'binary', version: '1', url: fixture, bin: 'agent.mjs' },
+    offline: true, launchEnv: { FIXTURE_MODE: 'slow-exit' } });
+  const client = await c.client('managed');
+  await client.initialize();
+  const { sessionId } = await client.session(c.root);
+  assert.equal((await client.prompt(sessionId, 'ready')).text, 'ready');
+  assert.equal((await readdir(c.manager.bridges.leases)).length, 1);
+
+  const exit = await client.close();
+  assert.equal(exit.code, 0);
+  assert.match(exit.stderr, /Bridge cleanup complete/);
+  assert.deepEqual(await readdir(c.manager.bridges.leases), []);
+});
+
 test('client disconnect stops a bridge that ignores EOF, including its child', async t => {
   const c = await setup(t); await c.profile('agent', { FIXTURE_MODE: 'ignore-eof' });
   const client = await c.client(); await client.initialize();
   const { sessionId } = await client.session(c.root);
   const { descendant } = await client.prompt(sessionId, 'spawn');
   assert.equal(alive(descendant), true);
-  await client.close();
+  assert.notEqual((await client.close()).code, 0);
   assert.equal(alive(descendant), false);
 });
 
