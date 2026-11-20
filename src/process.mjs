@@ -4,7 +4,7 @@ import { constants } from 'node:fs';
 import { basename, delimiter, dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { stripVTControlCharacters } from 'node:util';
 import { error, strings } from './profiles.mjs';
-import { stopProcess } from './child-process.mjs';
+import { finishCommand } from './child-process.mjs';
 export { stopProcess } from './child-process.mjs';
 
 export async function resolveCommand(command, prefixArgs = [], env = process.env) {
@@ -79,7 +79,7 @@ export async function readHelp({ command, args, cwd, env = process.env, timeoutM
       child.stdin.end();
     });
     return { code, text: stripVTControlCharacters(Buffer.concat(buffers).toString('utf8')) };
-  } finally { signal?.removeEventListener('abort', abort); await stopProcess(child); }
+  } finally { signal?.removeEventListener('abort', abort); await finishCommand(child); }
 }
 
 export async function runCommand(command, args, { cwd, env = process.env, timeoutMs = 180000, signal } = {}) {
@@ -107,6 +107,6 @@ export async function runCommand(command, args, { cwd, env = process.env, timeou
     });
   } finally {
     clearTimeout(timer); signal?.removeEventListener('abort', abort);
-    await stopProcess(child);
+    await finishCommand(child);
   }
 }

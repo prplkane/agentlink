@@ -13,8 +13,8 @@ The audit found and fixed a Windows installation-retention bug and corrected
 packaging/documentation defects. The publication conditions were the public-document
 policy, release identity, and release-time repository setup below.
 This document records the pre-publication audit. The maintainer subsequently
-authorized a public beta; [AL-005](work/tasks/AL-005-public-beta.md) records the
-release identity, platform checks, publication and Roundtable adoption.
+authorized a public beta. The release identity, platform checks and publication
+followed that authorization.
 
 ## Scope and evidence
 

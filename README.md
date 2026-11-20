@@ -6,7 +6,7 @@ AgentLink saves the launch command for each profile. Any client that speaks the
 Agent Client Protocol (ACP) can use that name to open a session with the selected
 agent. The client owns the conversation, and the agent supplies its capabilities.
 
-Requires Node.js 22 or newer. The public beta, `0.3.0-beta.3`, has no npm runtime
+Requires Node.js 22 or newer. The public beta, `0.3.0-beta.4`, has no npm runtime
 dependencies. See the [qualification results](docs/acp-qualification.md) for tested
 providers, platforms and known limits.
 
@@ -127,8 +127,12 @@ All ACP clients launching that profile inherit the choices on their next
 `session/new`, including on an open connection. Running and resumed sessions
 keep their settings. A client may explicitly override a choice for its session.
 If a saved ID disappears, session creation reports the unavailable choice so
-you can replace it once for every project. Bridge updates still check ACP
-initialization. Actual model and effort support is checked in the session.
+you can replace it once for every project. AgentLink can only detect a retired
+model once the bridge stops advertising that ID. While a bridge still lists
+it, the saved choice is accepted and any failure comes from the vendor. If
+the profile file cannot be read when a session is created, only that request
+fails; the connection and its other sessions stay open. Bridge updates still
+check ACP initialization. Actual model and effort support is checked in the session.
 
 ## Discover an unfamiliar agent
 
@@ -279,7 +283,8 @@ Current boundaries:
   its owner and path; remove a stale lock only after that process has stopped.
 
 `agentlink doctor [--json]` checks local profiles, launch files, managed
-installation metadata and locks without starting agents or changing anything.
+installation metadata, connection leases and locks without starting agents or changing anything.
+An abandoned lease appears as a note. Run `agentlink bridge prune` to remove it.
 It exits with status 1 for detected errors. It does not test sign-in or ACP
 compatibility; use `check PROFILE` for initialization.
 
@@ -299,9 +304,9 @@ synthetic profiles, checks model and effort inheritance on every prompt, and
 verifies lease cleanup after each batch.
 Python installation coverage runs when Python is available. No vendor account
 or paid model call is needed.
-A GitHub Actions workflow is included for Windows/Linux/macOS with Node 22/24
-and Python 3.13; it needs to run in the hosted repository before those platforms
-can be claimed as validated.
+A GitHub Actions workflow runs the offline suite on Windows, Linux and macOS
+with Node 22 and 24 and Python 3.13. Results are on the repository's
+[Actions page](https://github.com/prplkane/agentlink/actions).
 
 See [laptop testing](docs/laptop-testing.md) for real-agent checks and
 [architecture](docs/architecture.md) for the maintenance boundaries.
@@ -313,9 +318,9 @@ the standard gateway; the helper's limitations do not define the gateway.
 ## Working on this repository
 
 Read [CONTRIBUTING.md](https://github.com/prplkane/agentlink/blob/main/CONTRIBUTING.md) and the shared
-[AGENTS.md](https://github.com/prplkane/agentlink/blob/main/AGENTS.md). Non-trivial changes use the
-[engineering work ledger](https://github.com/prplkane/agentlink/blob/main/docs/work/README.md). This is repository coordination,
-not an AgentLink runtime feature.
+[AGENTS.md](https://github.com/prplkane/agentlink/blob/main/AGENTS.md). Work records for
+non-trivial changes are kept locally and are not part of the repository; see the
+[working agreement](https://github.com/prplkane/agentlink/blob/main/docs/work/README.md).
 
 The [source-document review](https://github.com/prplkane/agentlink/blob/main/docs/process/source-document-review.md) describes
 the guidance adapted from Roundtable and Career Hub, grouped by project, with
@@ -326,4 +331,3 @@ explicit reasons for each inclusion and exclusion. See
 
 [Apache License 2.0](LICENSE), copyright 2026 prplkane.
 [NOTICE](NOTICE) retains attribution for adapted process documentation.
-The license does not change the repository's private visibility.

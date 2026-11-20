@@ -1,7 +1,7 @@
 import { version } from './version.mjs';
 import { spawn } from 'node:child_process';
 import { AcpFrames } from './wire.mjs';
-import { stopProcess } from './process.mjs';
+import { finishCommand } from './child-process.mjs';
 import { error } from './profiles.mjs';
 import { describeOptions, sessionSelections } from './session-options.mjs';
 
@@ -80,5 +80,5 @@ export async function probeAcp(launch, { cwd, env = process.env, defaults, timeo
       child.once('exit', code => reject(error('PROCESS_EXIT', 'Agent exited during the ACP probe (' + code + ').')));
       request('initialize', { protocolVersion: 2, capabilities: {}, info: { name: 'agentlink-discovery', version } });
     });
-  } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); await stopProcess(child); }
+  } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); await finishCommand(child); }
 }

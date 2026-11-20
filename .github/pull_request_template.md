@@ -1,7 +1,7 @@
 ## Change
 
-Describe the concrete problem and resulting behavior. Link the AL task when
-there is one; keep the work record with the implementation.
+Describe the concrete problem and resulting behavior. Do not attach or link
+local work records.
 
 ## Verification
 
@@ -12,6 +12,6 @@ real-agent checks. Explain changed expectations.
 
 - [ ] Scope and runtime footprint remain appropriate.
 - [ ] Relevant failure/recovery behavior is covered.
-- [ ] Docs and the work record match the change.
+- [ ] Docs and the CHANGELOG match the change. No work record is included.
 - [ ] No credentials, real profiles, personal data or raw transcripts are included.
 - [ ] New dependencies or remaining limitations are explained.

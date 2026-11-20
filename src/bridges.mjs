@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { chmod, mkdir, open, readdir, realpath, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, open, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { error, profileName, strings } from './profiles.mjs';
@@ -220,6 +220,26 @@ export class BridgeStore extends BridgeRegistry {
       }
     }, installTimeoutMs, signal);
   }
+  async *inspectLeases() {
+    let names;
+    try { names = await readdir(this.leases); } catch (cause) { if (cause.code === 'ENOENT') return; throw cause; }
+    for (const name of names) {
+      if (!name.endsWith('.json')) continue;
+      const file = inside(this.leases, name);
+      try {
+        const lease = await readJson(file);
+        if (!Number.isSafeInteger(lease?.pid) || lease.pid < 1 || !/^[a-f0-9]{64}$/.test(lease.installKey)) {
+          throw error('INVALID_BRIDGE', 'Invalid running-connection lease.');
+        }
+        let alive = true;
+        try { process.kill(lease.pid, 0); } catch (cause) { if (cause.code === 'ESRCH') alive = false; else throw cause; }
+        yield { file, pid: lease.pid, installKey: lease.installKey, alive };
+      } catch (cause) {
+        // A connection can release its lease between readdir and readJson.
+        if (cause.code !== 'ENOENT') yield { file, error: cause };
+      }
+    }
+  }
   async prune({ cache = false, profiles = [] } = {}) {
     const records = await this.list();
     if (records.some(record => record.error)) throw error('INVALID_BRIDGE', 'Repair unreadable bridge records before pruning installations.');
@@ -228,15 +248,11 @@ export class BridgeStore extends BridgeRegistry {
       if (profile.bridge) continue; // Managed profiles resolve the active record, not their old snapshot.
       for (const key of this.referencedInstallations(profile)) used.add(key);
     }
-    let leases = [], installations = [];
-    try { leases = await readdir(this.leases); } catch (cause) { if (cause.code !== 'ENOENT') throw cause; }
-    for (const name of leases) {
-      if (!name.endsWith('.json')) continue;
-      const file = inside(this.leases, name), lease = await readJson(file);
-      if (!Number.isSafeInteger(lease.pid) || lease.pid < 1) throw error('INVALID_BRIDGE', 'Invalid running-connection lease.');
-      let alive = true;
-      try { process.kill(lease.pid, 0); } catch (cause) { if (cause.code === 'ESRCH') alive = false; else throw cause; }
-      if (alive) used.add(lease.installKey); else await unlink(file);
+    let installations = [];
+    for await (const lease of this.inspectLeases()) {
+      if (lease.error) throw lease.error;
+      if (lease.alive) used.add(lease.installKey);
+      else await rm(lease.file, { force: true });
     }
     try { installations = await readdir(this.installations); } catch (cause) { if (cause.code !== 'ENOENT') throw cause; }
     const removed = [];

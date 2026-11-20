@@ -14,5 +14,8 @@ package-smoke-results.json
 .cursor/
 CLAUDE.md
 test/integration-run-*/
+test/profile-run-*/
+test/fixture-run-*/
+docs/work/tasks/
 review_artifacts/
 *.sarif

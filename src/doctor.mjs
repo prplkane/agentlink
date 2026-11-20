@@ -34,6 +34,12 @@ export async function doctor(runtime) {
       await launchFiles(record.launch);
     });
   }
+  for await (const lease of runtime.bridges.inspectLeases()) {
+    if (lease.error) checks.push({ scope: 'lease', name: lease.file, status: 'error',
+      code: 'INVALID_LEASE', message: 'Cannot verify connection lease: ' + lease.error.message });
+    else if (!lease.alive) checks.push({ scope: 'lease', name: lease.file, status: 'note', pid: lease.pid,
+      code: 'STALE_LEASE', message: 'Connection owner has exited. Run agentlink bridge prune to remove its lease.' });
+  }
   const lockFiles = [join(runtime.home, 'management.lock'), join(runtime.home, 'leases.lock')];
   try {
     for (const name of await readdir(join(runtime.home, 'locks'))) {

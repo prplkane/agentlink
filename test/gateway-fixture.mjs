@@ -8,7 +8,7 @@ record({ launch: args, pid: process.pid, cwd: process.cwd() });
 let version = '1.0.0';
 try { version = JSON.parse(readFileSync(new URL('./package.json', import.meta.url))).version; } catch {}
 const mode = process.env.FIXTURE_MODE || 'normal';
-const offersModels = ['session-options', 'retired-model', 'ignore-selection'].includes(mode);
+const offersModels = ['session-options', 'retired-model', 'ignore-selection', 'hold-sessions'].includes(mode);
 if (args.includes('--login') || process.env.FIXTURE_LOGIN === 'env-only') {
   console.log(JSON.stringify({ login: args, env: process.env.FIXTURE_LOGIN }));
   process.exit(0);
@@ -24,7 +24,7 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
   setInterval(() => {}, 1000);
 } else {
   const send = value => process.stdout.write(JSON.stringify(value) + '\n');
-  const sessions = new Map(), waiting = new Map();
+  const sessions = new Map(), waiting = new Map(), held = [];
   let protocolVersion;
   function configOptions(session) {
     const idField = protocolVersion === 2 ? 'configId' : 'id';
@@ -63,7 +63,8 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
       if (offersModels) {
         const session = { ...message.params, model: 'standard', effort: 'low' };
         sessions.set(sessionId, session);
-        return reply({ sessionId, configOptions: configOptions(session), _meta: { fixture: 'retained' } });
+        const answer = () => reply({ sessionId, configOptions: configOptions(session), _meta: { fixture: 'retained' } });
+        return mode === 'hold-sessions' ? held.push(answer) : answer(); // Held until _fixture/release.
       }
       sessions.set(sessionId, message.params);
       reply({ sessionId, configOptions: [{ id: 'fixture-style', name: 'Style', type: 'select',
@@ -115,6 +116,7 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
       process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: message.id,
         result: { text: 'x'.repeat(1024 * 1024) } }) + '\n', () => process.exit(0));
     } else if (message.method === '_fixture/echo') reply(message.params);
+    else if (message.method === '_fixture/release') { for (const answer of held.splice(0)) answer(); reply({ released: true }); }
     else if (message.method) send({ jsonrpc: '2.0', id: message.id, error: { code: -32601, message: 'Unsupported by fixture', data: { method: message.method } } });
   });
   reader.on('close', () => {

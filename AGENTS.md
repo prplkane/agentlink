@@ -29,8 +29,11 @@ agent registry, an ACP transcript or a user's saved profile.
 
 ## Coordination and authorization
 
-Use the [work ledger](docs/work/README.md) for non-trivial work. Record an owner,
-expected files and acceptance criteria. Resolve overlaps before writing; use
+Keep a [local work record](docs/work/README.md) for non-trivial work. Record an
+owner, expected files and acceptance criteria. Work records, plans and review
+notes stay on the machine where they are written. Never stage, commit or push
+them, and do not link to them from tracked files. Summarize a user-visible
+change in the CHANGELOG. Resolve overlaps before writing; use
 separate worktrees for independently active writers. Do not spawn other agents
 unless the user or applicable higher-priority instructions authorize delegation.
 
@@ -45,9 +48,11 @@ Follow [workflow/test selection](docs/process/workflow.md). Routine tests must
 remain offline and use fake agents. Keep live vendor checks explicit and report
 them separately. Never label skipped, pending or failed checks as passing.
 
-Update the behavior docs and work record with the implementation. Report the
+Update the behavior docs with the implementation, and the local work record
+beside it. Report the
 outcome, relevant changed files, actual validation and remaining limits. Keep
-raw logs, secrets, personal paths and model transcripts out of committed records.
+raw logs, secrets, personal paths, model transcripts and work records out of
+commits. Check the staged list before every commit.
 
 For implementation details use [engineering style](docs/process/engineering.md);
 before handoff use the [review checklist](docs/process/review-checklist.md).

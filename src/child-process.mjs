@@ -11,7 +11,7 @@ function waitForExit(child, timeoutMs) {
   });
 }
 
-export async function stopProcess(child) {
+async function stopTree(child) {
   if (child.pid) {
     if (process.platform === 'win32') {
       if (child.exitCode === null && child.signalCode === null) {
@@ -19,7 +19,8 @@ export async function stopProcess(child) {
           ['/PID', String(child.pid), '/T', '/F'], { shell: false, windowsHide: true, stdio: 'ignore' });
         await new Promise(resolveStop => {
           const finish = () => { clearTimeout(timer); resolveStop(); };
-          const timer = setTimeout(() => { killer.kill(); finish(); }, 1500);
+          // A busy Windows host can take several seconds to start taskkill.
+          const timer = setTimeout(() => { killer.kill(); finish(); }, 5000);
           killer.once('error', finish); killer.once('exit', finish);
         });
       }
@@ -28,6 +29,21 @@ export async function stopProcess(child) {
       catch (cause) { if (cause.code !== 'ESRCH') throw cause; }
     }
   }
-  try { await waitForExit(child, 1500); }
+  await waitForExit(child, 1500);
+}
+
+export async function stopProcess(child) {
+  try { await stopTree(child); }
   finally { child.stdin?.destroy(); child.stdout?.destroy(); child.stderr?.destroy(); }
+}
+
+// Management commands have a result of their own. Keep it (including its
+// error code) while reporting a separate failure to terminate the owned PID.
+export async function finishCommand(child) {
+  try { await stopProcess(child); }
+  catch (cause) {
+    child.unref();
+    process.emitWarning('Could not confirm cleanup of child PID ' + child.pid + ': ' + cause.message,
+      { code: 'PROCESS_STOP_FAILED' });
+  }
 }
