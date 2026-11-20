@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Reorganize the README around connecting a first app, sharing model defaults,
+  and updating a bridge across projects.
+
 ## 0.3.0-beta.4 — 2026-11-21
 
 - Allow bridges up to five seconds to exit after the client closes stdin.

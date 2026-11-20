@@ -59,6 +59,33 @@ For a known existing distribution outside the built-in recipes, use
 `agentlink add NAME --manifest PATH-OR-URL` with an individual ACP registry entry.
 Only use a distribution you intend to install and execute.
 
+## Custom bridges and offline installs
+
+To share a specific bridge version, install it under a bridge ID, then point one or
+more profiles at that ID. Replace `PACKAGE_NAME` and `VERSION` with a published npm
+package and version.
+
+```sh
+agentlink bridge install review-bridge --package PACKAGE_NAME --version VERSION
+agentlink add review --bridge review-bridge
+agentlink bridge show review-bridge
+```
+
+An ACP registry entry can supply an npm package (`npx`), a native artifact (`binary`),
+or a Python package (`uvx`). Python installs use a shared virtual environment and
+require Python with venv and pip. Use `--bin` to select an executable from a package.
+For an offline install, supply a local tarball or wheel with `--source`, or use the
+package manager's cache. Set `--offline` to disable registry downloads by AgentLink.
+Third-party install hooks and agent processes run with the current user's permissions.
+
+Native artifacts can be raw executables, ZIP files, or tar.gz archives. The default
+limits are 256 MiB per download, 512 MiB of extracted data, and 10,000 entries.
+For other installer formats, use an externally installed executable.
+
+Use `agentlink bridge update review-bridge --version VERSION` to switch versions.
+Once sessions finish, `agentlink bridge prune` removes unused installations.
+Add `--cache` to clear the package cache as well.
+
 ## Check the standard ACP connection
 
 ~~~sh
