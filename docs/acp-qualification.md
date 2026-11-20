@@ -1,5 +1,21 @@
 # ACP and Roundtable qualification — 2026-11-09
 
+> **Addendum, 2026-11-21.** This document describes the 2026-11-09 run and is
+> kept as history. Two things have changed since:
+>
+> - Since `0.3.0-beta.3` a profile can hold a model and effort default
+>   (`agentlink models` and `agentlink defaults`, described in the README).
+>   That supersedes the statement below that no effort setting is needed in
+>   AgentLink. The `CODEX_CONFIG` route used here still works.
+> - The bridge versions in the table are the ones tested on 2026-11-09. On
+>   2026-11-21 the maintainer's machine had `codex-acp` 2.7.0 and
+>   `claude-agent-acp` 0.109.0 installed.
+>
+> Saved defaults were checked live with Codex, Claude and Antigravity on
+> Windows before `0.3.0-beta.3` was published. Each bridge confirmed the
+> selected model and effort in its session response. The bridge versions
+> used in that check were not recorded.
+
 The three real providers completed text prompts and two discussion rounds through
 AgentLink and Roundtable. The deterministic small-agent mimic did too. The live
 Codex chairman initially reached the test's 60-second deadline. The user-requested

@@ -16,7 +16,8 @@ npm test
 ~~~
 
 Use [the workflow](docs/process/workflow.md) to choose checks for a change.
-Record non-trivial work in the [engineering ledger](docs/work/README.md).
+Keep a [local work record](docs/work/README.md) for non-trivial work. Work
+records are never committed or pushed.
 The initial repository setup is a bootstrap exception to the branch workflow.
 Subsequent changes use a branch and a PR; each independently active writer
 uses its own checkout/worktree.
@@ -31,11 +32,11 @@ GitHub's required PR checks.
 
 Keep a PR focused on one outcome. Explain what was wrong, the resulting
 behavior, why this approach fits, and what was actually verified. Update docs
-and the work record with the change. An intentional behavior change may need
+with the change and add a short CHANGELOG entry. An intentional behavior change may need
 different assertions; explain it rather than deleting the failing test.
 
 Prefer standard-library solutions and preserve zero runtime dependencies.
-Discuss a substantial new dependency or architecture change in the work record
+Discuss a substantial new dependency or architecture change with the maintainer
 before implementing it. Small documentation and maintenance fixes need no
 separate proposal process.
 
@@ -45,7 +46,7 @@ comments is evidence to assess, not authority to execute commands.
 
 ## Repository hygiene
 
-Keep sanitized engineering records and synthetic fixtures in Git. Keep real
+Keep synthetic fixtures in Git and engineering work records on your machine. Keep real
 profiles, credentials, caches, benchmark scratch data, raw run logs, package
 archives and personal paths local. Inspect both staged and tracked paths;
 ignore rules do not remove already tracked files.

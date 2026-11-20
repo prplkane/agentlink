@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixture, setup } from './support.mjs';
 import { SessionDefaults } from '../src/session-defaults.mjs';
@@ -61,6 +61,43 @@ test('an already open connection picks up new pins and clears them for later ses
   assert.equal((await client.prompt(initial.sessionId, 'fixture')).model, 'standard');
   await c.manager.setDefaults('provider', { model: null, effort: null });
   assert.deepEqual((await client.session(c.root)).configOptions.map(o => o.currentValue), ['standard', 'low']);
+});
+
+test('an unreadable profile fails one session creation and keeps the open connection', async t => {
+  const c = await setup(t);
+  const log = join(c.root, 'rpc.jsonl');
+  await c.profile('provider', { FIXTURE_MODE: 'session-options', FIXTURE_LOG: log }); // No saved defaults.
+  const client = await c.client('provider');
+  await client.initialize();
+  const first = await client.session(c.root);
+  const path = c.manager.store.path('provider');
+  const saved = await readFile(path, 'utf8');
+  await writeFile(path, saved.slice(0, 40)); // A half-finished hand edit.
+  await assert.rejects(client.session(c.root), cause =>
+    cause.remote?.code === -32603 && cause.remote.data.code === 'INVALID_PROFILE' && /could not prepare/.test(cause.message));
+  assert.equal((await client.prompt(first.sessionId, 'still open')).text, 'still open');
+  await writeFile(path, saved);
+  assert.notEqual((await client.session(c.root)).sessionId, first.sessionId);
+  const created = (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line))
+    .filter(entry => entry.rpc?.method === 'session/new');
+  assert.equal(created.length, 2); // The failed creation never reached the bridge.
+  assert.match((await client.close()).stderr, /^INVALID_PROFILE: /m); // The reason is also logged.
+});
+
+test('a creation beyond the pending limit is refused while the pending ones complete', async t => {
+  const c = await setup(t);
+  await c.profile('provider', { FIXTURE_MODE: 'session-options' });
+  await c.manager.setDefaults('provider', { model: 'swift' });
+  await c.manager.update('provider', { launchEnv: { FIXTURE_MODE: 'hold-sessions' } });
+  const client = await c.client('provider');
+  await client.initialize();
+  const pending = Array.from({ length: 256 }, () => client.session(c.root));
+  await assert.rejects(client.session(c.root), cause =>
+    cause.remote?.code === -32603 && cause.remote.data.code === 'MESSAGE_LIMIT');
+  await client.request('_fixture/release');
+  const sessions = await Promise.all(pending);
+  assert.equal(new Set(sessions.map(session => session.sessionId)).size, 256);
+  assert.ok(sessions.every(session => session.configOptions[0].currentValue === 'swift'));
 });
 
 test('unsupported and unconfirmed selections fail without replacing saved data', async t => {

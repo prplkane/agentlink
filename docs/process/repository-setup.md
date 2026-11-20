@@ -2,7 +2,7 @@
 
 ## Public beta configuration — 2026-11-09
 
-The maintainer authorized the public beta in [AL-005](../work/tasks/AL-005-public-beta.md).
+The maintainer authorized the public beta.
 The repository is now public. Secret scanning, push protection, private vulnerability
 reporting, Dependabot alerts and security updates are enabled. Main requires a PR,
 resolved conversations and all six offline matrix checks against an up-to-date base;
@@ -86,8 +86,7 @@ all agents can be directed to the shared [AGENTS.md](../../AGENTS.md).
   dependencies were installed.
 - Package dry-run: license and attribution included; work records, agent
   instructions, scripts and scratch data excluded from the runtime package.
-- Existing global privacy hook retained; initial commit/push receipt is in
-  [AL-001](../work/tasks/AL-001-private-repository.md).
+- Existing global privacy hook retained; the initial commit and push passed it.
 - Outgoing Git history passed Gitleaks before the first push. GitHub's main
   head matched bootstrap `ed2734d65c77a8411fb4af5f56bedce5bbc5f45e`.
 - GitHub recognized Apache-2.0 and confirmed private visibility after the push.

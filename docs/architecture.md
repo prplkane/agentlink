@@ -44,6 +44,12 @@ sessions on the same connection read later edits. Existing sessions, resume
 operations and explicit client setters pass through. The connection keeps
 its original bridge lease throughout.
 
+If the gateway cannot prepare a creation, for example because the profile
+file is unreadable at that moment, it answers that request with JSON-RPC
+error `-32603` and the AgentLink or OS code in `data.code`. The request is
+not forwarded to the bridge, and the reason is also written to stderr. The
+connection and its other sessions continue.
+
 Each configured creation keeps its own outstanding request ID. The gateway
 reuses that ID upstream after the bridge's creation response and holds the
 downstream response until configuration finishes. It replaces only the JSON
@@ -160,7 +166,9 @@ Windows process-tree cleanup uses taskkill while the owned bridge is alive.
 Native Job Object containment is not implemented, so descendants orphaned by a
 previously exited parent are a known limitation. Process ownership is not a
 sandbox. Abrupt process death may leave a lock or lease; stale locks produce a
-diagnostic, and pruning removes leases whose process no longer exists.
+diagnostic. Doctor reports a lease whose process has exited as a note, and
+pruning removes it. A management probe, help command or installer retains
+its result if process cleanup fails. A warning on stderr identifies the PID.
 Very deep Python virtual environments can exceed Windows launcher limits.
 Installation detects an interpreter path of 260 or more characters before
 running venv/pip and requests a shorter store. No path virtualization layer,

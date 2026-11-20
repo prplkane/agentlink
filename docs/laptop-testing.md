@@ -160,6 +160,10 @@ The requested rerun used a separate temporary profile with
 the same model then completed chairman synthesis in 12.2 seconds. No AgentLink
 runtime change was needed. Bridge defaults are provider-specific; merge the
 setting with the profile's existing configuration rather than discarding it.
+
+Since `0.3.0-beta.3`, `agentlink defaults PROFILE --effort ID` saves the same
+choice on the profile and checks it against the bridge's advertised levels.
+Prefer it for new setups; the environment route above still works.
 Choose a suitable profile default and a realistic per-call deadline before a live
 review; do not automatically retry a timed-out verdict. Unknown usage remains unknown.
 

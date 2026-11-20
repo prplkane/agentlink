@@ -4,6 +4,19 @@ import { AcpFrames } from './wire.mjs';
 import { stopProcess } from './child-process.mjs';
 import { error, strings } from './profiles.mjs';
 import { authMarker, terminalAuthReply } from './terminal-auth.mjs';
+import { member, whitespace } from './json-spans.mjs';
+
+// The reply to a session/new that AgentLink could not prepare, for example
+// because the profile file was unreadable at that moment. The request ID is
+// copied as raw text so large numeric IDs keep their exact bytes.
+function sessionSetupError(source, cause) {
+  const id = source.slice(...member(source, whitespace(source, 0), 'id'));
+  // The request itself was valid, so this is an internal error (-32603), not
+  // invalid params. data.code carries the stable AgentLink or OS error code.
+  const detail = { code: -32603, message: 'AgentLink could not prepare this session: ' + cause.message,
+    data: { code: cause.code || 'SESSION_SETUP_FAILED' } };
+  return Buffer.from('{"jsonrpc":"2.0","id":' + id + ',"error":' + JSON.stringify(detail) + '}\n');
+}
 
 // One process/connection per caller; installed bridges and profiles are shared.
 // No initialize, session/new, task, approval, download or discovery is injected.
@@ -46,20 +59,34 @@ export async function runGateway(launch, { cwd = process.cwd(), env = process.en
   let inputPump = Promise.resolve();
   let outputFrames;
   if (!terminal) {
-    let defaultsRelay, protocolVersion;
+    let defaultsRelay, protocolVersion, refusal;
     async function prepareSession(message, source) {
-      const defaults = readDefaults ? await readDefaults() : launch.defaults;
-      if (!defaults || !Object.keys(defaults).length) return;
-      if (!defaultsRelay) {
-        const { SessionDefaults } = await import('./session-defaults.mjs');
-        defaultsRelay = new SessionDefaults(frame => child.stdin.write(frame), maxMessageBytes);
+      try {
+        const defaults = readDefaults ? await readDefaults() : launch.defaults;
+        if (!defaults || !Object.keys(defaults).length) return;
+        if (!defaultsRelay) {
+          const { SessionDefaults } = await import('./session-defaults.mjs');
+          defaultsRelay = new SessionDefaults(frame => child.stdin.write(frame), maxMessageBytes);
+        }
+        defaultsRelay.expectSession(message, source, defaults, protocolVersion);
+      } catch (cause) {
+        // Only this creation fails. The bridge never sees it, and the other
+        // sessions on this connection keep running.
+        refusal = sessionSetupError(source, cause);
+        // The client may not show error details, so the reason also goes to the log.
+        diagnostics.write((cause.code || 'SESSION_SETUP_FAILED') + ': ' + cause.message + '\n');
       }
-      defaultsRelay.expectSession(message, source, defaults, protocolVersion);
     }
     const initializeIds = new Set();
     inputPump = pipeline(input, new AcpFrames({ maxMessageBytes, onMessage(message, source) {
       if (message.method === 'session/new' && Object.hasOwn(message, 'id')) return prepareSession(message, source);
       if (message.method === 'initialize' && Object.hasOwn(message, 'id')) initializeIds.add(message.id);
+    }, mapMessage() {
+      if (!refusal) return;
+      // Reply through the output pump so the frame keeps its place in the stream.
+      if (!outputFrames.writableEnded && !outputFrames.destroyed) outputFrames.push(refusal);
+      refusal = undefined;
+      return null;
     } }), child.stdin, { signal: pumps.signal }).then(() => {
       if (!closing && child.exitCode === null && child.signalCode === null) {
         inputTimer = setTimeout(() => { void stop(); }, eofGraceMs);

@@ -1,9 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.3.0-beta.4 — 2026-11-21
 
 - Allow bridges up to five seconds to exit after the client closes stdin.
   This fixes a spurious exit code of 1 during normal Codex shutdown on Windows.
+- Fix a beta.3 regression: an unreadable profile file at `session/new` ended
+  the whole connection, including for profiles without saved defaults. That
+  request now receives JSON-RPC error `-32603` and other sessions continue.
+  Exceeding the limit of pending session creations is handled the same way.
+- Engineering work records are now kept locally and are no longer part of
+  the repository.
+- Management commands preserve their result when process cleanup times out
+  and report the owned PID on stderr. Windows tree termination allows a slow
+  `taskkill` to finish.
+- `agentlink doctor` reports a lease whose owner exited as a note.
+  `agentlink bridge prune` removes the abandoned lease.
 
 ## 0.3.0-beta.3 — 2026-11-19
 

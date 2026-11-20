@@ -25,7 +25,7 @@ async function context(t) {
     await Promise.all(clients.map(client => client.close()));
     assert.equal(dirname(resolve(root)), resolve(directory));
     assert.ok(root.includes('profile-run-'));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
   return { root, home, manager, log, clients,
     launch: mode => ({ command: process.execPath, prefixArgs: [fixture, mode, log] }),

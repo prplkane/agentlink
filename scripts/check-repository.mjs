@@ -21,7 +21,9 @@ const failures = [];
 if (!entries.length) failures.push('No tracked/staged files. Stage the intended source tree before checking.');
 for (const { mode, path } of entries) {
   if (!allowedFiles.has(path) && !allowedRoots.has(path.split('/')[0])) failures.push('Unreviewed tree path: ' + path);
-  if (privatePath.test(path) || generated.test(path)) failures.push('Private/generated path is tracked: ' + path);
+  if (privatePath.test(path) || generated.test(path) || path.startsWith('docs/work/tasks/')) {
+    failures.push('Private/generated path is tracked: ' + path);
+  }
   if (mode === '120000' || mode === '160000') failures.push('Linked content needs an explicit repository policy: ' + path);
   if (!path.endsWith('.md') || !existsSync(resolve(root, path))) continue;
   const markdown = readFileSync(resolve(root, path), 'utf8').replace(/^[ \t]*(?:```|~~~)[^\n]*\n[\s\S]*?^[ \t]*(?:```|~~~)[^\n]*$/gm, '');
