@@ -92,7 +92,8 @@ export function rpcClient(home, name, { cwd, onRequest, env, launch } = {}) {
     async close() {
       if (!ended) child.stdin.end();
       let timer;
-      const result = await Promise.race([exit, new Promise(resolveExit => { timer = setTimeout(() => { child.kill(); resolveExit(); }, 5000); })]);
+      // Allow the gateway's five-second EOF grace and its process-tree cleanup.
+      const result = await Promise.race([exit, new Promise(resolveExit => { timer = setTimeout(() => { child.kill(); resolveExit(); }, 10000); })]);
       clearTimeout(timer);
       return result;
     }

@@ -52,9 +52,11 @@ follow the creation reply. Intermediate configuration notifications are
 superseded by the setter's complete option list. Pending setup and buffered
 notifications have per-connection limits.
 
-The connection owns one bridge process. On client EOF it allows a short exit
-grace, then stops the process tree where the host supports it. Existing ACP
-sessions stay with that process when profiles or installations change.
+The connection owns one bridge process. When the client closes stdin, the
+gateway forwards EOF and allows up to five seconds for the bridge to finish
+and report its own exit status. If the bridge is still running, the gateway
+stops its process tree where the host supports it. Existing ACP sessions
+stay with that process when profiles or installations change.
 Normal shutdown drains queued responses even for slow readers. Explicit
 termination cancels both pumps and interrupts a blocked output drain, allowing
 the connection to release its installation lease.

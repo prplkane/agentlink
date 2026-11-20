@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Allow bridges up to five seconds to exit after the client closes stdin.
+  This fixes a spurious exit code of 1 during normal Codex shutdown on Windows.
+
 ## 0.3.0-beta.3 — 2026-11-19
 
 - Inspect model and effort choices from an existing ACP profile and save
