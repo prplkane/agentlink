@@ -32,6 +32,9 @@ function controlStop(t, delay) {
     t.mock.restoreAll();
     syncBuiltinESMExports();
     if (child?.pid && child.exitCode === null && child.signalCode === null) {
+      // The command released its handle after the simulated stop failure.
+      // The test owns the final reap and must keep Node alive until exit.
+      child.ref();
       const exit = once(child, 'exit');
       child.kill('SIGKILL');
       await exit;
