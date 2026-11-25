@@ -24,7 +24,10 @@ if (args.includes('--login') || process.env.FIXTURE_LOGIN === 'env-only') {
   console.log(JSON.stringify({ login: args, env: process.env.FIXTURE_LOGIN }));
   process.exit(0);
 }
-if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args.includes('/?')) {
+if (args.join(' ') === 'cli exec --help') {
+  process.stdout.write(process.env.FIXTURE_CODEX_EXEC_HELP || '');
+  if (mode === 'error-help') process.exitCode = 2;
+} else if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args.includes('/?')) {
   if (mode === 'custom-help' && args[0] !== '/?') process.exit(2);
   if (mode === 'help-command' && args[0] !== 'help') console.log('Commands:\n  help [command]  Display command help');
   else console.log('Options:\n  --acp  Start ACP over stdio');
@@ -57,6 +60,7 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
     if (message.method === 'initialize') {
       protocolVersion = message.params.protocolVersion;
       const v2 = message.params.protocolVersion === 2;
+      if (!v2 && mode === 'v2-only') return send({ jsonrpc: '2.0', id: message.id, error: { code: -32602, message: 'Requires v2' } });
       if (mode === 'strict-init' && (v2 ? !message.params.info : !message.params.clientInfo)) {
         return send({ jsonrpc: '2.0', id: message.id, error: { code: -32602, message: 'Missing implementation info' } });
       }

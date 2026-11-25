@@ -4,7 +4,7 @@ import { error } from './profiles.mjs';
 
 export const historyKey = 'agentlink.dev/session-history';
 export const codexKey = 'codex.dev/session-history';
-const codex = '@agentclientprotocol/codex-acp';
+export const codexAgentName = '@agentclientprotocol/codex-acp';
 const claude = '@agentclientprotocol/claude-agent-acp';
 // Unadvertised vendor semantics were checked against these published packages.
 const claudeSdkOptions = new Set(['0.109.0', '0.109.1', '0.110.0', '0.110.1', '0.111.0', '0.112.0']);
@@ -32,6 +32,30 @@ function responseStatus(source, status) {
   catch { return refuse(source, 'SESSION_HISTORY_UNCONFIRMED', 'The provider returned invalid session metadata.'); }
 }
 
+export function historySupport(result, requestedAirIndex = false) {
+  const v2 = result.protocolVersion === 2; // Internal option inspection also negotiates v2.
+  const info = v2 ? result.info : result.agentInfo;
+  const caps = (v2 ? result.capabilities : result.agentCapabilities) ?? {};
+  const sessions = (v2 ? caps.session : caps.sessionCapabilities) || {};
+  const isCodex = info?.name === codexAgentName;
+  const nativeCodex = isCodex && versionOne(caps._meta?.[codexKey]) && caps._meta[codexKey].ephemeral === true;
+  const nativeClaude = info?.name === claude && claudeSdkOptions.has(info.version);
+  const air = result._meta?.jetbrains?.air?.capabilities;
+  const airIndex = Array.isArray(air) && air.includes('sessionIndex');
+  // In AIR session-index mode, session/delete permanently erases a thread.
+  // The ordinary Codex ACP session/delete archives. Use the explicit archive
+  // extension when AIR actually advertises it.
+  let archiveMethod;
+  if (isCodex && airIndex && air.includes('sessionArchive')) archiveMethod = '_session/archive';
+  else if (isCodex && !airIndex && !requestedAirIndex && codexSoftDelete.has(info.version) && object(sessions.delete)) {
+    archiveMethod = 'session/delete';
+  }
+  const canClose = v2 || object(sessions.close);
+  const strategy = nativeCodex || nativeClaude ? 'ephemeral'
+    : archiveMethod && canClose ? 'archive-on-close' : 'provider-managed';
+  return { nativeCodex, nativeClaude, archiveMethod, canClose, canTitle: object(sessions.title), strategy };
+}
+
 // The caller opted in at initialize. State belongs to this one upstream connection.
 // Never discover chats by enumerating history or use an ID supplied by a different caller.
 export class SessionHistory {
@@ -48,26 +72,7 @@ export class SessionHistory {
     this.metadata = new Map();
     this.prefix = 'agentlink-history-' + randomUUID() + '-';
     this.sequence = 0;
-    const v2 = result.protocolVersion === 2; // Internal option inspection also negotiates v2.
-    const info = v2 ? result.info : result.agentInfo;
-    const caps = (v2 ? result.capabilities : result.agentCapabilities) ?? {};
-    const sessions = (v2 ? caps.session : caps.sessionCapabilities) || {};
-    const isCodex = info?.name === codex;
-    this.nativeCodex = isCodex && versionOne(caps._meta?.[codexKey]) && caps._meta[codexKey].ephemeral === true;
-    this.nativeClaude = info?.name === claude && claudeSdkOptions.has(info.version);
-    const air = result._meta?.jetbrains?.air?.capabilities;
-    const airIndex = Array.isArray(air) && air.includes('sessionIndex');
-    // In AIR session-index mode, session/delete permanently erases a thread.
-    // The ordinary Codex ACP session/delete archives. Use the explicit archive
-    // extension when AIR actually advertises it.
-    if (isCodex && airIndex && air.includes('sessionArchive')) this.archiveMethod = '_session/archive';
-    else if (isCodex && !airIndex && !requestedAirIndex && codexSoftDelete.has(info.version) && object(sessions.delete)) {
-      this.archiveMethod = 'session/delete';
-    }
-    this.canClose = v2 || object(sessions.close);
-    this.canTitle = object(sessions.title);
-    this.strategy = this.nativeCodex || this.nativeClaude ? 'ephemeral'
-      : this.archiveMethod && this.canClose ? 'archive-on-close' : 'provider-managed';
+    Object.assign(this, historySupport(result, requestedAirIndex));
   }
 
   capability(source) {

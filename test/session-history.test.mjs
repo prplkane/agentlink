@@ -15,7 +15,7 @@ const policyError = code => cause => cause.remote?.data?.code === code;
 async function harness(t, { name = codex, version = '2.7.0', kind = 'fallback', fault, mode } = {}) {
   const ctx = await setup(t);
   const log = join(ctx.root, 'calls.jsonl');
-  const env = { FIXTURE_NAME: name, FIXTURE_VERSION: version, FIXTURE_HISTORY: kind, FIXTURE_LOG: log,
+  const env = { CODEX_PATH: '', FIXTURE_NAME: name, FIXTURE_VERSION: version, FIXTURE_HISTORY: kind, FIXTURE_LOG: log,
     ...(fault && { FIXTURE_HISTORY_FAULT: fault }), ...(mode && { FIXTURE_MODE: mode }) };
   await ctx.profile('provider', env);
   const client = await ctx.client('provider');

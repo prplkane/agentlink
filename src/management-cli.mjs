@@ -171,8 +171,14 @@ export async function runManagement(argv, { signal, cliURL } = {}) {
         result.checks.map(check => check.status + '\t' + check.scope + ' ' + check.name +
           (check.message ? ': ' + check.message : '')).join('\n') + '\n');
       else if (action === 'remove') process.stdout.write('Removed ' + first + '.\n');
-      else process.stdout.write((result.name || first) + ': ' + result.verification.status +
-        (action === 'check' ? '\n' : '\nSaved ' + manager.store.path(result.name) + '\n'));
+      else {
+        const { status, sessionHistory } = result.verification;
+        const lines = [(result.name || first) + ': ' + status];
+        if (sessionHistory) lines.push('ACP v1 session history: ' + sessionHistory.acpV1Strategy);
+        if (sessionHistory?.codexExecEphemeral) lines.push('Codex exec --ephemeral: ' + sessionHistory.codexExecEphemeral);
+        if (action !== 'check') lines.push('Saved ' + manager.store.path(result.name));
+        process.stdout.write(lines.join('\n') + '\n');
+      }
     }
   } catch (cause) {
     const detail = { code: cause.code || 'INVALID_ARGUMENT', message: cause.message };

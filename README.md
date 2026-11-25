@@ -51,6 +51,11 @@ chat when the app closes it, or leave history to the provider. Apps that require
 native non-saving sessions can reject providers that lack them. The client can
 leave out the preference for conversations the user wants to keep. [Session history negotiation](docs/architecture.md#session-history)
 
+Run `agentlink check codex` to see what the installed profile supports. For
+example, Codex can offer `exec --ephemeral` on the command line while its ACP
+bridge can only archive a chat after it closes. Apps can read both results with
+`agentlink check codex --json`.
+
 ## Manage connections
 
 | Task | Command |

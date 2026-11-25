@@ -84,6 +84,33 @@ non-saving support fail before session creation with
 native support must also acknowledge it for the new thread. Missing or negative
 acknowledgement fails creation with `SESSION_HISTORY_UNCONFIRMED`.
 
+### Inspecting an installed transport
+
+`add`, `inspect`, `check` and `refresh` expose `verification.sessionHistory` in
+their JSON output. A stock Codex profile can produce the following result.
+
+~~~json
+{ "acpV1Strategy": "archive-on-close", "codexExecEphemeral": "advertised" }
+~~~
+
+`acpV1Strategy` describes the gateway's history policy for an ACP v1 client
+using the opt-in above. It can also be `unknown` when the v1 handshake could
+not be verified. A client still negotiates on its own connection and checks
+the result of each requested creation.
+
+For a bridge identifying itself as Codex ACP, `codexExecEphemeral` reports
+whether its Codex executable lists `--ephemeral` in `exec --help`. AgentLink
+checks the executable selected by `CODEX_PATH`, or the adapter's bundled CLI
+via `codex-acp cli exec --help`. Values are `advertised`, `not-advertised`
+and `unknown`. A failed command or unrecognized help format yields `unknown`.
+Other agents omit this field. Direct CLI help never enables an ACP policy.
+
+`inspect` and `check` return live observations. `add` and `refresh` save
+them for offline reads with `show` or `list --json`. Older profiles and
+profiles saved with `--skip-check` may lack this snapshot.
+
+### Provider behavior
+
 | Provider behavior | Creation status | Behavior at close |
 | --- | --- | --- |
 | Published Claude ACP releases from 0.109.0 through 0.112.0 | `ephemeral` | The gateway sets `_meta.claudeCode.options.persistSession=false` at creation. |
@@ -164,11 +191,14 @@ ACP commands are followed when advertised in command/option rows. An explicit
 help argument array handles other conventions. Help is treated as data, never
 as executable shell instructions or installation authority.
 
-Discovery and connection checks perform initialization only and recognize ACP v1 or the
-v2 draft. It offers v2 using `info` and `capabilities`, then reads the response
+Discovery and connection checks open no sessions. AgentLink offers the v2
+draft using `info` and `capabilities`, then reads the response
 fields for the negotiated version (`agentInfo`/`agentCapabilities` in v1,
-`info`/`capabilities` in v2). The gateway still forwards the caller's own handshake.
-It saves advertised capabilities and authentication metadata. This does not
+`info`/`capabilities` in v2). A v2 reply, or a Codex reply to that initial
+offer, gets a separate v1 initialization with the history opt-in. The primary
+verification retains its negotiated protocol, capabilities and authentication
+metadata even if this optional v1 check fails. A gateway connection uses the
+caller's handshake and performs no help scans. Setup verification does not
 verify model access, permissions enforcement, or complete task behavior. Model
 listing uses read-only `session/options` when offered. Inspection that needs
 live setters, or operates on a peer without that method, opens a fresh session

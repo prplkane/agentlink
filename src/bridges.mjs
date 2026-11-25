@@ -100,7 +100,7 @@ function validateSpec(input) {
 }
 
 export class BridgeStore extends BridgeRegistry {
-  async install(id, input, { env = process.env, timeoutMs = 3000, installTimeoutMs = 180000,
+  async install(id, input, { env = process.env, timeoutMs = 3000, maxHelpBytes = 65536, installTimeoutMs = 180000,
     offline = false, signal, validate, publish = record => this.publish(record) } = {}) {
     profileName(id);
     let spec = validateSpec(input);
@@ -201,7 +201,7 @@ export class BridgeStore extends BridgeRegistry {
         if (!Object.hasOwn(metadata.bins, bin)) throw error('EXECUTABLE_MISSING', 'Select an executable with --bin. Available: ' + names.join(', '));
         const launch = { ...metadata.bins[bin], acpArgs: spec.args, env: spec.env };
         if (process.platform === 'win32' && /\.(cmd|bat|ps1)$/i.test(launch.command)) throw error('UNSUPPORTED_LAUNCHER', 'Use a native or Node entry point for this managed bridge.');
-        const verification = await inProbeDirectory(cwd => verifyAgent(launch, { cwd, env, timeoutMs, signal }));
+        const verification = await inProbeDirectory(cwd => verifyAgent(launch, { cwd, env, timeoutMs, maxHelpBytes, signal }));
         await validate?.(launch);
         signal?.throwIfAborted();
         const record = { schemaVersion: 1, id, installKey, spec, launch, verification, updatedAt: new Date().toISOString() };

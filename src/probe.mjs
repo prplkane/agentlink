@@ -4,13 +4,13 @@ import { AcpFrames } from './wire.mjs';
 import { finishCommand } from './child-process.mjs';
 import { error } from './profiles.mjs';
 import { describeOptions, sessionSelections } from './session-options.mjs';
-import { codexKey, historyKey, SessionHistory } from './session-history.mjs';
+import { codexKey, historyKey, historySupport, SessionHistory } from './session-history.mjs';
 
 const maxMessageBytes = 1024 * 1024;
 
 // Discovery stops after initialize. Inspection reads options directly when the
 // peer supports it. Checking a different model or effort needs a disposable session.
-export async function probeAcp(launch, { cwd, env = process.env, defaults, timeoutMs = 3000, signal } = {}) {
+export async function probeAcp(launch, { cwd, env = process.env, defaults, historyV1 = false, timeoutMs = 3000, signal } = {}) {
   signal?.throwIfAborted();
   const child = spawn(launch.command, [...launch.prefixArgs, ...launch.acpArgs], {
     cwd, env: { ...env, ...launch.env }, shell: false, windowsHide: true,
@@ -90,6 +90,7 @@ export async function probeAcp(launch, { cwd, env = process.env, defaults, timeo
         }
         resolve({ status: 'initialize-passed', checkedAt: new Date().toISOString(),
           protocolVersion: value.protocolVersion, agentInfo, capabilities,
+          sessionHistory: { acpV1Strategy: value.protocolVersion === 1 ? historySupport(value).strategy : 'unknown' },
           authMethods: Array.isArray(value.authMethods) ? value.authMethods : [] });
       } });
       frames.resume();
@@ -101,8 +102,8 @@ export async function probeAcp(launch, { cwd, env = process.env, defaults, timeo
       child.once('error', () => reject(error('SPAWN_FAILED', 'Could not start the configured ACP executable.')));
       child.once('exit', code => reject(error('PROCESS_EXIT', 'Agent exited during the ACP probe (' + code + ').')));
       const info = { name: 'agentlink-discovery', version };
-      const capabilities = defaults ? { _meta: { [codexKey]: { version: 1 } } } : {};
-      request('initialize', defaults && launch.protocolVersion === 1
+      const capabilities = defaults || historyV1 ? { _meta: { [codexKey]: { version: 1 } } } : {};
+      request('initialize', historyV1 || (defaults && launch.protocolVersion === 1)
         ? { protocolVersion: 1, clientCapabilities: capabilities, clientInfo: info }
         : { protocolVersion: 2, capabilities, info });
     });
