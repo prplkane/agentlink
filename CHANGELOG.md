@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0-beta.5 — release candidate
+## 0.3.0-beta.5 — 2026-11-25
 
 - ACP v1 apps can request a temporary provider chat per new session. AgentLink
   reports whether the bridge supports native non-saving sessions, archives an
