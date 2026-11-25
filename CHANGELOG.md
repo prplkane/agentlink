@@ -1,12 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.3.0-beta.5 — release candidate
 
 - ACP v1 apps can request a temporary provider chat per new session. AgentLink
   reports whether the bridge supports native non-saving sessions, archives an
   owned Codex session at close, or leaves history under provider control.
 - Setup, check and refresh report the installed ACP v1 session history strategy.
   Codex profiles also report whether their direct CLI advertises `exec --ephemeral`.
+- A client can send a close or archive request and finish writing immediately.
+  The gateway waits briefly for the reply and avoids issuing a duplicate archive.
 - Model listing uses read-only session options when the bridge advertises them.
   Model and effort validation requests a temporary session when it needs one.
 - Reorganize the README around connecting a first app, sharing model defaults,

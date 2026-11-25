@@ -139,6 +139,7 @@ export class SessionHistory {
     const directRemoval = message.method === 'session/delete' || message.method === this.archiveMethod;
     if ((message.method === 'session/close' || directRemoval) && Object.hasOwn(message, 'id')) {
       if (this.closing.size >= maxSessions) throw error('MESSAGE_LIMIT', 'Too many pending session closes.');
+      state.pendingCloses++;
       this.closing.set(requestKey(message.id, source), { state, directRemoval });
     }
   }
@@ -180,7 +181,7 @@ export class SessionHistory {
         this.checkDrain();
         return refuse(source, 'SESSION_HISTORY_UNCONFIRMED', 'The provider did not return a distinct session ID.');
       }
-      const state = { sessionId, status: this.strategy };
+      const state = { sessionId, status: this.strategy, pendingCloses: 0 };
       if (this.canClose || state.status === 'archive-on-close') this.owned.set(sessionId, state);
       if (message.result._meta != null && !object(message.result._meta)) {
         this.failedSetup(sessionId);
@@ -200,14 +201,27 @@ export class SessionHistory {
     const pending = this.closing.get(key);
     if (!pending) return;
     this.closing.delete(key);
-    if (message.error) return; // Keep the owned session usable following a failed close.
     const { state, directRemoval } = pending;
+    state.pendingCloses--;
+    const owned = this.owned.get(state.sessionId) === state;
+    const canArchive = owned && state.status === 'archive-on-close' && !state.pendingCloses;
+    if (message.error) {
+      // A live client can continue after a refused close. At EOF the gateway
+      // still owns cleanup once the client's outstanding operations have settled.
+      if (this.ending && canArchive) void this.archive(state);
+      this.checkDrain();
+      return;
+    }
     if (directRemoval) {
-      this.owned.delete(state.sessionId);
+      if (owned) this.owned.delete(state.sessionId);
       this.checkDrain();
       return; // The client performed its own cleanup. Preserve the original reply.
     }
     if (state.status === 'archive-on-close') {
+      if (!canArchive) {
+        this.checkDrain();
+        return responseStatus(source, 'unconfirmed');
+      }
       const archived = this.archive(state);
       const bytes = Buffer.byteLength(source) + 1;
       if (this.finalReplies.size >= maxSessions || this.heldBytes + bytes > 4 * this.limit) return responseStatus(source, 'unconfirmed');
@@ -220,14 +234,16 @@ export class SessionHistory {
       this.finalReplies.add(reply);
       return null;
     }
-    this.owned.delete(state.sessionId);
+    if (owned) this.owned.delete(state.sessionId);
     this.checkDrain();
     return responseStatus(source, state.status);
   }
 
-  checkDrain() {
-    if (this.ending && !this.opening.size && ![...this.owned.values()].some(state => state.status === 'archive-on-close')) this.drained?.();
+  cleanupPending() {
+    return this.opening.size > 0 || this.closing.size > 0 || [...this.owned.values()].some(state => state.status === 'archive-on-close');
   }
+
+  checkDrain() { if (this.ending && !this.cleanupPending()) this.drained?.(); }
 
   // EOF can race the session/new reply. Keep stdin available briefly to archive
   // just-created IDs, including when the application disappears before closing.
@@ -236,10 +252,15 @@ export class SessionHistory {
   async drain() {
     if (this.disposed) return;
     this.ending = true;
-    for (const state of this.owned.values()) if (state.status === 'archive-on-close') void this.archive(state);
-    if (!this.opening.size && ![...this.owned.values()].some(state => state.status === 'archive-on-close')) return;
+    for (const state of this.owned.values()) {
+      if (state.status === 'archive-on-close' && !state.pendingCloses) void this.archive(state);
+    }
+    if (!this.cleanupPending()) return;
     await new Promise(resolve => {
-      const timer = setTimeout(resolve, metadataTimeoutMs);
+      const timer = setTimeout(() => {
+        if (this.closing.size) this.warn('Client close or removal was unconfirmed at disconnect.');
+        resolve();
+      }, metadataTimeoutMs);
       this.drained = () => { clearTimeout(timer); resolve(); };
     });
     this.drained = undefined;

@@ -94,6 +94,9 @@ if (args.join(' ') === 'cli exec --help') {
       if (history) created._meta = meta;
       return historyFault === 'slow-new' ? setTimeout(() => reply(created), 125) : reply(created);
     } else if (history && ['session/close', 'session/set_title', 'session/delete', '_session/archive'].includes(message.method)) {
+      if (message.method === 'session/close' && historyFault === 'slow-close') return setTimeout(() => {
+        record({ closeReady: message.params.sessionId }); reply({});
+      }, 125);
       if (message.method === 'session/delete' && historyFault === 'exit-archive') return process.exit(0);
       if (message.method === 'session/set_title' && historyFault === 'slow-title') return setTimeout(() => { record({ titleReady: message.params.sessionId }); reply({}); }, 100);
       if ((message.method === 'session/delete' && historyFault === 'stuck-archive') || (message.method === 'session/set_title' && historyFault === 'stuck-title')) return;

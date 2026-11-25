@@ -127,7 +127,9 @@ The legacy Codex path sets a fixed title before the first prompt when supported,
 so an accepted title suppresses the adapter's automatic title generation.
 When AIR session indexing is active, only its explicit archive operation is
 eligible. The gateway takes cleanup IDs from managed creations on its own
-connection. Disconnect starts bounded best-effort cleanup. Process death
+connection. On disconnect it gives pending client close or removal requests
+time to finish. A confirmed client removal completes cleanup. A refused
+close can still be followed by an owned archive. Disconnect cleanup is bounded. Process death
 or a failed bridge can leave a persistent thread in active history.
 
 The gateway keeps ownership in memory. It records no transcript or list of

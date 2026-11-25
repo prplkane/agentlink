@@ -75,6 +75,53 @@ test('owned fallback cleanup covers disconnect during a new-session response', a
   assert.deepEqual(await h.calls('session/prompt'), []);
 });
 
+test('EOF waits for a pending close before archiving the owned Codex session', async t => {
+  const h = await harness(t, { fault: 'slow-close' });
+  const { sessionId } = await h.fresh();
+  const close = h.close(sessionId);
+  const exit = h.client.close();
+  assert.equal(status(await close), 'archived');
+  assert.equal((await exit).code, 0);
+  const calls = await h.records();
+  const ready = calls.findIndex(row => row.closeReady === sessionId);
+  assert.ok(ready >= 0 && ready < calls.findIndex(row => row.rpc?.method === 'session/delete'));
+  assert.equal((await h.calls('session/delete')).length, 1);
+});
+
+test('EOF honors a pending client archive and retries after a refused close', async t => {
+  for (const explicitRemoval of [true, false]) {
+    const h = await harness(t, explicitRemoval ? {} : { fault: 'close-error' });
+    const { sessionId } = await h.fresh();
+    const pending = explicitRemoval ? h.client.request('session/delete', { sessionId }) : h.close(sessionId);
+    const reply = explicitRemoval ? pending : assert.rejects(pending, cause => cause.remote.code === -32011);
+    const exit = h.client.close();
+    await reply;
+    assert.equal((await exit).code, 0);
+    assert.deepEqual((await h.calls('session/delete')).map(call => call.params.sessionId), [sessionId]);
+  }
+});
+
+test('EOF drains a pending native close acknowledgement', async t => {
+  const h = await harness(t, { name: claude, version: '0.109.0', fault: 'slow-close' });
+  const { sessionId } = await h.fresh('require-ephemeral');
+  const close = h.close(sessionId);
+  const exit = h.client.close();
+  assert.equal(status(await close), 'ephemeral');
+  assert.equal((await exit).code, 0);
+  assert.deepEqual(await h.calls('session/delete'), []);
+});
+
+test('EOF bounds the wait for an unanswered client archive without replaying it', async t => {
+  const h = await harness(t, { fault: 'stuck-archive' });
+  const { sessionId } = await h.fresh();
+  const pending = assert.rejects(h.client.request('session/delete', { sessionId }), /Gateway exited/);
+  const exit = await h.client.close();
+  await pending;
+  assert.equal(exit.code, 0);
+  assert.match(exit.stderr, /Client close or removal was unconfirmed/);
+  assert.equal((await h.calls('session/delete')).length, 1);
+});
+
 test('Claude applies persistSession on the fresh session without changing ordinary ones', async t => {
   const h = await harness(t, { name: claude, version: '0.109.0' });
   assert.equal(h.strategy, 'ephemeral');

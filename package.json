@@ -1,6 +1,6 @@
 {
   "name": "@prplkane/agentlink",
-  "version": "0.3.0-beta.4",
+  "version": "0.3.0-beta.5",
   "type": "module",
   "description": "Connect ACP clients to agent CLIs through named profiles and centrally managed bridges.",
   "exports": {
