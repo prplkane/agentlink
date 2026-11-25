@@ -4,7 +4,7 @@ import { error } from './profiles.mjs';
 // Validate framing, not the evolving ACP method schema. Preserve the original
 // bytes, IDs, extensions and field order. Stream backpressure bounds queued data.
 export class AcpFrames extends Transform {
-  constructor({ maxMessageBytes = 16 * 1024 * 1024, onMessage, mapMessage } = {}) {
+  constructor({ maxMessageBytes = 16 * 1024 * 1024, onMessage, mapMessage, onEnd } = {}) {
     super();
     if (!Number.isSafeInteger(maxMessageBytes) || maxMessageBytes < 1) throw new TypeError('Invalid ACP frame limit.');
     this.limit = maxMessageBytes;
@@ -12,6 +12,7 @@ export class AcpFrames extends Transform {
     this.bytes = 0;
     this.onMessage = onMessage;
     this.mapMessage = mapMessage;
+    this.onEnd = onEnd;
   }
   async _transform(chunk, encoding, done) {
     try {
@@ -47,6 +48,9 @@ export class AcpFrames extends Transform {
     if (part.length) this.parts.push(part);
   }
   _flush(done) {
-    done(this.bytes ? error('PROTOCOL_ERROR', 'ACP stream ended inside a message.') : undefined);
+    if (this.bytes) return done(error('PROTOCOL_ERROR', 'ACP stream ended inside a message.'));
+    const final = this.onEnd?.();
+    if (final?.then) final.then(() => done(), done);
+    else done();
   }
 }

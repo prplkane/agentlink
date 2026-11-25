@@ -6,6 +6,7 @@ import { probeAcp } from './probe.mjs';
 import { providers } from './providers.mjs';
 import { error, strings } from './profiles.mjs';
 import { readHelp, resolveCommand } from './process.mjs';
+import { codexAgentName } from './session-history.mjs';
 
 function knownRecipe(provider, executableName) {
   if (provider !== undefined) {
@@ -52,8 +53,46 @@ export function inspectHelp(text) {
   return { candidates, subcommands: [...new Set(subcommands)].slice(0, 2) };
 }
 
-export async function verifyAgent(launch, { cwd, env = process.env, timeoutMs = 3000, signal } = {}) {
-  return probeAcp(launch, { cwd, env, timeoutMs, signal });
+async function codexExecEphemeral(launch, { cwd, env, timeoutMs, maxBytes, signal }) {
+  // The stock adapter's "cli" subcommand uses its own bundled Codex. When an
+  // operator selects CODEX_PATH, run that executable directly without a shell.
+  const key = process.platform === 'win32' ? Object.keys(env).sort().find(key => key.toUpperCase() === 'CODEX_PATH') : 'CODEX_PATH';
+  const override = key && env[key];
+  try {
+    const executable = override && /[/\\]/.test(override) ? resolve(cwd, override) : override;
+    const direct = executable ? await resolveCommand(executable, [], env) : undefined;
+    const args = direct ? direct.prefixArgs : [...launch.prefixArgs, ...launch.acpArgs, 'cli'];
+    const { code, text } = await readHelp({ command: direct?.command ?? launch.command, args: [...args, 'exec', '--help'],
+      cwd, env, timeoutMs, maxBytes, signal });
+    const options = text.split(/^Options:[ \t]*\r?$/m)[1]?.split(/^\S/m, 1)[0];
+    if (code !== 0 || !/^Usage:[ \t]+codex(?:\.exe)?[ \t]+exec(?:[ \t]|$)/m.test(text) || !options?.trim()) return 'unknown';
+    return /^[ \t]{1,8}(?:-\w,[ \t]+)?--ephemeral(?:[ \t]{2,}[^\r\n]*)?[ \t]*\r?$/m.test(options) ? 'advertised' : 'not-advertised';
+  } catch (cause) {
+    if (signal?.aborted) throw cause;
+    return 'unknown';
+  }
+}
+
+export async function verifyAgent(launch, { cwd = process.cwd(), env = process.env, timeoutMs = 3000, maxHelpBytes = 65536, signal } = {}) {
+  const options = { cwd, env, timeoutMs, signal };
+  const verification = await probeAcp(launch, options);
+  const codex = verification.agentInfo.name === codexAgentName;
+  // Apps negotiate history on v1. A v2 result or a Codex downgrade that
+  // never received the v1 opt-in cannot establish what that client will see.
+  if (verification.protocolVersion === 2 || codex) {
+    try {
+      verification.sessionHistory = (await probeAcp(launch, { ...options, historyV1: true })).sessionHistory;
+    } catch (cause) {
+      if (signal?.aborted) throw cause;
+      verification.sessionHistory.acpV1Strategy = 'unknown';
+    }
+  }
+  if (codex) {
+    verification.sessionHistory.codexExecEphemeral = await codexExecEphemeral(launch, {
+      ...options, env: { ...env, ...launch.env }, maxBytes: maxHelpBytes
+    });
+  }
+  return verification;
 }
 
 export async function inProbeDirectory(callback) {
@@ -101,7 +140,7 @@ export async function discoverAgent({ command, prefixArgs = [], acpArgs, provide
       if (helpArgs) candidate.discovery.helpArgs = [...helpArgs];
       if (help) candidate.discovery.helpSha256 = createHash('sha256').update(help).digest('hex');
       try {
-        candidate.verification = verify ? await verifyAgent(candidate, { cwd, env, timeoutMs, signal }) : { status: 'pending' };
+        candidate.verification = verify ? await verifyAgent(candidate, { cwd, env, timeoutMs, maxHelpBytes, signal }) : { status: 'pending' };
         candidate.protocolVersion = candidate.verification.protocolVersion || 1;
         return candidate;
       } catch (cause) {

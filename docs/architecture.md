@@ -67,6 +67,75 @@ Normal shutdown drains queued responses even for slow readers. Explicit
 termination cancels both pumps and interrupts a blocked output drain, allowing
 the connection to release its installation lease.
 
+## Session history
+
+An ACP v1 client opts in by sending `{"version":1}` under
+`initialize.params.clientCapabilities._meta["agentlink.dev/session-history"]`.
+The same key on `result.agentCapabilities._meta` returns the version and a
+`strategy` of `ephemeral`, `archive-on-close` or `provider-managed`.
+
+On an individual `session/new`, put `{"mode":"prefer-ephemeral"}` or
+`{"mode":"require-ephemeral"}` under `params._meta["agentlink.dev/session-history"]`.
+Omitting the key selects the provider's usual behavior. Each managed creation
+returns `{"status":"..."}` under that key on `result._meta`. Check this actual
+status before sending a prompt. Strict requests to a provider without native
+non-saving support fail before session creation with
+`error.data.code="SESSION_HISTORY_UNSUPPORTED"`. A Codex adapter that advertises
+native support must also acknowledge it for the new thread. Missing or negative
+acknowledgement fails creation with `SESSION_HISTORY_UNCONFIRMED`.
+
+### Inspecting an installed transport
+
+`add`, `inspect`, `check` and `refresh` expose `verification.sessionHistory` in
+their JSON output. A stock Codex profile can produce the following result.
+
+~~~json
+{ "acpV1Strategy": "archive-on-close", "codexExecEphemeral": "advertised" }
+~~~
+
+`acpV1Strategy` describes the gateway's history policy for an ACP v1 client
+using the opt-in above. It can also be `unknown` when the v1 handshake could
+not be verified. A client still negotiates on its own connection and checks
+the result of each requested creation.
+
+For a bridge identifying itself as Codex ACP, `codexExecEphemeral` reports
+whether its Codex executable lists `--ephemeral` in `exec --help`. AgentLink
+checks the executable selected by `CODEX_PATH`, or the adapter's bundled CLI
+via `codex-acp cli exec --help`. Values are `advertised`, `not-advertised`
+and `unknown`. A failed command or unrecognized help format yields `unknown`.
+Other agents omit this field. Direct CLI help never enables an ACP policy.
+
+`inspect` and `check` return live observations. `add` and `refresh` save
+them for offline reads with `show` or `list --json`. Older profiles and
+profiles saved with `--skip-check` may lack this snapshot.
+
+### Provider behavior
+
+| Provider behavior | Creation status | Behavior at close |
+| --- | --- | --- |
+| Published Claude ACP releases from 0.109.0 through 0.112.0 | `ephemeral` | The gateway sets `_meta.claudeCode.options.persistSession=false` at creation. |
+| Codex ACP with the versioned native extension | `ephemeral` | The adapter confirms the app-server started a non-saving thread. |
+| Published Codex ACP releases from 2.7.0 through 2.12.0 | `archive-on-close` | The thread is persistent until archived. A successful archive removes it from active history and retains it in the provider's archive. |
+| Antigravity and other bridges without qualified support | `provider-managed` | The provider controls storage and sidebar visibility. |
+
+Use standard `session/close` when finished with an owned session. A successful
+close reports `ephemeral`, `archived`, `provider-managed` or `unconfirmed` in
+the result metadata. Upstream close errors reach the client. An archive error
+or timeout produces `unconfirmed`. When the connection ends, the gateway makes
+one bounded retry for a failed explicit archive. Sessions remain usable across prompts.
+The legacy Codex path sets a fixed title before the first prompt when supported,
+so an accepted title suppresses the adapter's automatic title generation.
+When AIR session indexing is active, only its explicit archive operation is
+eligible. The gateway takes cleanup IDs from managed creations on its own
+connection. On disconnect it gives pending client close or removal requests
+time to finish. A confirmed client removal completes cleanup. A refused
+close can still be followed by an owned archive. Disconnect cleanup is bounded. Process death
+or a failed bridge can leave a persistent thread in active history.
+
+The gateway keeps ownership in memory. It records no transcript or list of
+provider chats. Non-saving describes local provider conversation history.
+Provider-side billing, data retention and the client's own records are separate.
+
 ## Management path
 
 Profiles live in `profiles/NAME.json`. They contain a launch definition and
@@ -124,12 +193,18 @@ ACP commands are followed when advertised in command/option rows. An explicit
 help argument array handles other conventions. Help is treated as data, never
 as executable shell instructions or installation authority.
 
-The probe performs initialization only and recognizes negotiated ACP v1 or the
-v2 draft. It offers v2 using `info` and `capabilities`, then reads the response
+Discovery and connection checks open no sessions. AgentLink offers the v2
+draft using `info` and `capabilities`, then reads the response
 fields for the negotiated version (`agentInfo`/`agentCapabilities` in v1,
-`info`/`capabilities` in v2). The gateway still forwards the caller's own handshake.
-It saves advertised capabilities and authentication metadata. This does not
-verify model access, permissions enforcement, or complete task behavior.
+`info`/`capabilities` in v2). A v2 reply, or a Codex reply to that initial
+offer, gets a separate v1 initialization with the history opt-in. The primary
+verification retains its negotiated protocol, capabilities and authentication
+metadata even if this optional v1 check fails. A gateway connection uses the
+caller's handshake and performs no help scans. Setup verification does not
+verify model access, permissions enforcement, or complete task behavior. Model
+listing uses read-only `session/options` when offered. Inspection that needs
+live setters, or operates on a peer without that method, opens a fresh session
+with the available non-saving or owned archive strategy and never sends a prompt.
 Temporary probe directory cleanup retries transient Windows filesystem contention
 for a bounded period; a persistent cleanup failure is still reported.
 
@@ -145,6 +220,7 @@ the profile instead of dropping its options and activating a different launch.
 | `management-cli.mjs`, `doctor.mjs` | Management commands and read-only local diagnostics |
 | `gateway.mjs`, `wire.mjs`, `terminal-auth.mjs`, `json-spans.mjs` | ACP forwarding, framing, backpressure and lossless JSON edits |
 | `session-defaults.mjs`, `session-options.mjs` | Per-session defaults and bridge-advertised model and effort choices |
+| `session-history.mjs` | Per-creation native history settings and connection-owned archive cleanup |
 | `profiles.mjs`, `storage.mjs` | User profiles, atomic records and operation locks |
 | `bridges.mjs`, `artifacts.mjs` | Selected distributions, shared installations, integrity and bounded extraction |
 | `discovery.mjs`, `probe.mjs` | Help/metadata matching, initialization checks and explicit option inspection |
