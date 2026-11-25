@@ -43,6 +43,14 @@ can override it for that session. If the bridge stops offering a saved ID, Agent
 reports it when an app opens a session. Choose a replacement once for the profile, or
 return to the provider's choices with `agentlink defaults claude --clear-model --clear-effort`.
 
+## Keep temporary work out of provider history
+
+An ACP v1 app can request a temporary provider chat for an individual task. The
+bridge reports whether it can disable local conversation persistence, archive the
+chat when the app closes it, or leave history to the provider. Apps that require
+native non-saving sessions can reject providers that lack them. The client can
+leave out the preference for conversations the user wants to keep. [Session history negotiation](docs/architecture.md#session-history)
+
 ## Manage connections
 
 | Task | Command |

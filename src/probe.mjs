@@ -4,35 +4,48 @@ import { AcpFrames } from './wire.mjs';
 import { finishCommand } from './child-process.mjs';
 import { error } from './profiles.mjs';
 import { describeOptions, sessionSelections } from './session-options.mjs';
+import { codexKey, historyKey, SessionHistory } from './session-history.mjs';
 
-// Discovery stops after initialize. Explicit option inspection continues into
-// one disposable session and never sends a prompt.
+const maxMessageBytes = 1024 * 1024;
+
+// Discovery stops after initialize. Inspection reads options directly when the
+// peer supports it. Checking a different model or effort needs a disposable session.
 export async function probeAcp(launch, { cwd, env = process.env, defaults, timeoutMs = 3000, signal } = {}) {
   signal?.throwIfAborted();
   const child = spawn(launch.command, [...launch.prefixArgs, ...launch.acpArgs], {
     cwd, env: { ...env, ...launch.env }, shell: false, windowsHide: true,
     detached: process.platform !== 'win32', stdio: ['pipe', 'pipe', 'pipe']
   });
-  let timer, abort;
+  let timer, abort, history, finishing = false;
+  const send = frame => {
+    if (child.stdin.destroyed || child.stdin.writableEnded) return false;
+    child.stdin.write(frame);
+    return true;
+  };
   try {
     return await new Promise((resolve, reject) => {
       let pending, sessionId, selections, protocolVersion, sequence = 0;
       const request = (method, params) => {
         pending = method;
-        child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: ++sequence, method, params }) + '\n');
+        const message = { jsonrpc: '2.0', id: ++sequence, method, params };
+        const source = JSON.stringify(message);
+        send((method === 'session/new' ? history.prepare(message, source).toString() : source) + '\n');
       };
       timer = setTimeout(() => reject(defaults ? error('OPTIONS_TIMEOUT', 'ACP option inspection timed out.') :
         error('INITIALIZE_TIMEOUT', 'ACP initialization timed out.')), timeoutMs);
       abort = () => reject(error('CANCELLED', 'ACP probe cancelled.'));
       signal?.addEventListener('abort', abort, { once: true });
-      const frames = new AcpFrames({ maxMessageBytes: 1024 * 1024, onMessage(message) {
+      const frames = new AcpFrames({ maxMessageBytes, onMessage(message, source) {
         if (message.method) {
           if (defaults && Object.hasOwn(message, 'id')) child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: message.id,
             error: { code: -32601, message: 'Client operations are unavailable during option inspection.' } }) + '\n');
           return;
         }
-        if (message.id !== sequence) return;
+        const annotated = history?.agentMessage(message, source);
+        if (finishing || annotated === null || message.id !== sequence) return;
+        if (annotated) message = JSON.parse(annotated.toString());
         if (message.error) {
+          if (annotated) return reject(error(message.error.data.code, message.error.message));
           reject(Object.assign(error(pending === 'initialize' ? 'INITIALIZE_REJECTED' : 'OPTIONS_REJECTED',
             message.error.message || 'Agent rejected ' + pending + '.'), {
             remoteCode: message.error.code
@@ -41,14 +54,19 @@ export async function probeAcp(launch, { cwd, env = process.env, defaults, timeo
         }
         const value = message.result;
         if (pending !== 'initialize') {
+          if (pending === 'session/options') return resolve(describeOptions(value?.configOptions));
           if (pending === 'session/new') {
             sessionId = value?.sessionId;
             if (typeof sessionId !== 'string' || !sessionId) throw error('PROTOCOL_ERROR', 'Agent did not return a session ID.');
             selections = sessionSelections(value.configOptions, defaults, protocolVersion);
           }
-          const next = selections.next(value?.configOptions);
-          if (next.done) resolve(describeOptions(next.value));
-          else request('session/set_config_option', { sessionId, ...next.value });
+          // Keep consuming the pipe after a rejected choice so an owned archive
+          // can still receive its acknowledgement during teardown.
+          try {
+            const next = selections.next(value?.configOptions);
+            if (next.done) resolve(describeOptions(next.value));
+            else request('session/set_config_option', { sessionId, ...next.value });
+          } catch (cause) { reject(cause); }
           return;
         }
         const capabilities = value?.protocolVersion === 2 ? value.capabilities : value?.agentCapabilities;
@@ -64,7 +82,11 @@ export async function probeAcp(launch, { cwd, env = process.env, defaults, timeo
         }
         if (defaults) {
           protocolVersion = value.protocolVersion;
-          return request('session/new', { cwd, mcpServers: [] });
+          const sessionCaps = protocolVersion === 2 ? capabilities.session : capabilities.sessionCapabilities;
+          if (sessionCaps?.options && !Object.keys(defaults).length) return request('session/options', { cwd });
+          history = new SessionHistory(value, send, () => {}, maxMessageBytes,
+            { warn: detail => process.emitWarning(detail, { code: 'SESSION_HISTORY_UNCONFIRMED' }) });
+          return request('session/new', { cwd, mcpServers: [], _meta: { [historyKey]: { mode: 'prefer-ephemeral' } } });
         }
         resolve({ status: 'initialize-passed', checkedAt: new Date().toISOString(),
           protocolVersion: value.protocolVersion, agentInfo, capabilities,
@@ -78,7 +100,18 @@ export async function probeAcp(launch, { cwd, env = process.env, defaults, timeo
       child.stdin.on('error', cause => { if (cause.code !== 'EPIPE') reject(cause); });
       child.once('error', () => reject(error('SPAWN_FAILED', 'Could not start the configured ACP executable.')));
       child.once('exit', code => reject(error('PROCESS_EXIT', 'Agent exited during the ACP probe (' + code + ').')));
-      request('initialize', { protocolVersion: 2, capabilities: {}, info: { name: 'agentlink-discovery', version } });
+      const info = { name: 'agentlink-discovery', version };
+      const capabilities = defaults ? { _meta: { [codexKey]: { version: 1 } } } : {};
+      request('initialize', defaults && launch.protocolVersion === 1
+        ? { protocolVersion: 1, clientCapabilities: capabilities, clientInfo: info }
+        : { protocolVersion: 2, capabilities, info });
     });
-  } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); await finishCommand(child); }
+  } finally {
+    finishing = true;
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+    await history?.disconnect();
+    history?.dispose();
+    await finishCommand(child);
+  }
 }

@@ -1,14 +1,9 @@
-import { member, whitespace } from './json-spans.mjs';
+import { member, requestKey, whitespace } from './json-spans.mjs';
 import { error } from './profiles.mjs';
 import { sessionSelections } from './session-options.mjs';
 
 function field(source, name) {
   return member(source, whitespace(source, 0), name);
-}
-
-function requestKey(id, source) {
-  if (typeof id === 'number' && !Number.isSafeInteger(id)) return 'number:' + source.slice(...field(source, 'id'));
-  return JSON.stringify(id);
 }
 
 function optionsSpan(source) {
@@ -18,7 +13,8 @@ function optionsSpan(source) {
 // An upstream session/new is complete before we reuse its request ID for a
 // setter. The downstream request stays outstanding until all setters finish.
 export class SessionDefaults {
-  constructor(send, limit) {
+  constructor(send, limit, onFailure) {
+    this.onFailure = onFailure;
     this.send = send;
     this.limit = limit;
     this.requests = new Map();
@@ -64,6 +60,7 @@ export class SessionDefaults {
     if (!state) return;
     const first = !state.selections;
     if (message.error) {
+      if (state.sessionId) this.onFailure?.(state.sessionId);
       this.finish(key, state);
       return; // The upstream error already carries the original caller's ID.
     }
@@ -80,6 +77,7 @@ export class SessionDefaults {
     let next;
     try { next = state.selections.next(message.result?.configOptions); }
     catch (cause) {
+      this.onFailure?.(state.sessionId);
       this.finish(key, state);
       return Buffer.from('{"jsonrpc":"2.0","id":' + state.id + ',"error":' +
         JSON.stringify({ code: -32602, message: cause.message, data: { code: cause.code } }) + '}');

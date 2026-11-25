@@ -8,6 +8,17 @@ record({ launch: args, pid: process.pid, cwd: process.cwd() });
 let version = '1.0.0';
 try { version = JSON.parse(readFileSync(new URL('./package.json', import.meta.url))).version; } catch {}
 const mode = process.env.FIXTURE_MODE || 'normal';
+const history = process.env.FIXTURE_HISTORY;
+const historyFault = process.env.FIXTURE_HISTORY_FAULT;
+const codexHistory = 'codex.dev/session-history';
+function historyCapabilities(params) {
+  if (!history) return {};
+  const v2 = params.protocolVersion === 2;
+  const offered = (v2 ? params.capabilities : params.clientCapabilities)?._meta?.[codexHistory]?.version === 1;
+  const ext = history === 'native' && offered ? { [codexHistory]: { version: 1, ephemeral: true } } : {};
+  return { [v2 ? 'session' : 'sessionCapabilities']: { close: {}, delete: {}, title: {}, ...(offersModels && { options: {} }) },
+    _meta: { 'fixture/custom': { enabled: true }, ...ext } };
+}
 const offersModels = ['session-options', 'retired-model', 'ignore-selection', 'hold-sessions'].includes(mode);
 if (args.includes('--login') || process.env.FIXTURE_LOGIN === 'env-only') {
   console.log(JSON.stringify({ login: args, env: process.env.FIXTURE_LOGIN }));
@@ -50,25 +61,42 @@ if (args.includes('--help') || args.includes('-h') || args[0] === 'help' || args
         return send({ jsonrpc: '2.0', id: message.id, error: { code: -32602, message: 'Missing implementation info' } });
       }
       reply({ protocolVersion: message.params.protocolVersion,
-      [v2 ? 'info' : 'agentInfo']: { name: process.env.FIXTURE_NAME || 'offline-agent', version },
+      [v2 ? 'info' : 'agentInfo']: { name: process.env.FIXTURE_NAME || 'offline-agent', version: process.env.FIXTURE_VERSION || version },
       [v2 ? 'capabilities' : 'agentCapabilities']: v2
-        ? { session: { prompt: { image: {} } }, _meta: { 'fixture/custom': { enabled: true } } }
-        : { loadSession: true, promptCapabilities: { image: true }, _meta: { 'fixture/custom': { enabled: true } } },
+        ? { session: { prompt: { image: {} } }, _meta: { 'fixture/custom': { enabled: true } }, ...historyCapabilities(message.params) }
+        : { loadSession: true, promptCapabilities: { image: true }, _meta: { 'fixture/custom': { enabled: true } }, ...historyCapabilities(message.params) },
       authMethods: [{ id: 'terminal-login', name: 'Fixture login', type: 'terminal',
         args: mode === 'env-auth' ? [] : ['--login'], env: { FIXTURE_LOGIN: mode === 'env-auth' ? 'env-only' : 'yes' } }],
-      _meta: { receivedClient: message.params } });
+      _meta: { receivedClient: message.params, ...(history?.startsWith('air') && { jetbrains: { air: { version: 1,
+        capabilities: history === 'air-archive' ? ['sessionIndex', 'sessionArchive'] : ['sessionIndex'] } } }) } });
     }
+    else if (history && offersModels && message.method === 'session/options') reply({ configOptions: configOptions({ model: 'standard', effort: 'low' }) });
     else if (message.method === 'session/new') {
       const sessionId = 'session-' + ++nextSession;
+      if (historyFault === 'new-error') return send({ jsonrpc: '2.0', id: message.id, error: { code: -32010, message: 'Provider setup failed' } });
+      const meta = { fixture: 'retained' };
+      if (history === 'native' && message.params._meta?.[codexHistory]?.ephemeral === true && historyFault !== 'missing-ack') {
+        meta[codexHistory] = { ephemeral: historyFault !== 'negative-ack' };
+      }
       if (offersModels) {
         const session = { ...message.params, model: 'standard', effort: 'low' };
         sessions.set(sessionId, session);
-        const answer = () => reply({ sessionId, configOptions: configOptions(session), _meta: { fixture: 'retained' } });
+        const answer = () => reply({ sessionId, configOptions: configOptions(session), _meta: meta });
         return mode === 'hold-sessions' ? held.push(answer) : answer(); // Held until _fixture/release.
       }
       sessions.set(sessionId, message.params);
-      reply({ sessionId, configOptions: [{ id: 'fixture-style', name: 'Style', type: 'select',
-        currentValue: 'plain', options: [{ value: 'plain', name: 'Plain' }] }] });
+      const created = { sessionId, configOptions: [{ id: 'fixture-style', name: 'Style', type: 'select',
+        currentValue: 'plain', options: [{ value: 'plain', name: 'Plain' }] }] };
+      if (history) created._meta = meta;
+      return historyFault === 'slow-new' ? setTimeout(() => reply(created), 125) : reply(created);
+    } else if (history && ['session/close', 'session/set_title', 'session/delete', '_session/archive'].includes(message.method)) {
+      if (message.method === 'session/delete' && historyFault === 'exit-archive') return process.exit(0);
+      if (message.method === 'session/set_title' && historyFault === 'slow-title') return setTimeout(() => { record({ titleReady: message.params.sessionId }); reply({}); }, 100);
+      if ((message.method === 'session/delete' && historyFault === 'stuck-archive') || (message.method === 'session/set_title' && historyFault === 'stuck-title')) return;
+      if ((message.method === 'session/delete' && historyFault === 'archive-error') || (message.method === 'session/close' && historyFault === 'close-error')) {
+        return send({ jsonrpc: '2.0', id: message.id, error: { code: -32011, message: 'Provider refused ' + message.method } });
+      }
+      return reply({ _meta: { fixture: 'closed' } });
     } else if (offersModels && message.method === 'session/set_config_option') {
       const { sessionId, configId, value } = message.params;
       if (protocolVersion === 2 && message.params.type !== 'id') {

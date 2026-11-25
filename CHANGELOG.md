@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- ACP v1 apps can request a temporary provider chat per new session. AgentLink
+  reports whether the bridge supports native non-saving sessions, archives an
+  owned Codex session at close, or leaves history under provider control.
+- Model listing uses read-only session options when the bridge advertises them.
+  Model and effort validation requests a temporary session when it needs one.
 - Reorganize the README around connecting a first app, sharing model defaults,
   and updating a bridge across projects.
 
